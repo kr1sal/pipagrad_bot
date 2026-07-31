@@ -17,6 +17,10 @@ class SqlAlchemyUserRepository:
         row = await self._session.scalar(stmt)
         return _to_entity(row) if row else None
 
+    async def get_by_id(self, user_id: int) -> User | None:
+        row = await self._session.get(UserModel, user_id)
+        return _to_entity(row) if row else None
+
     async def add(self, user: User) -> User:
         model = UserModel(
             tg_id=int(user.tg_id),

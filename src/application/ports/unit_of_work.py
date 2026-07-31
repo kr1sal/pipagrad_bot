@@ -4,6 +4,7 @@ from types import TracebackType
 from typing import Protocol, Self
 
 from src.application.ports.repositories import (
+    BattleRepository,
     DickRepository,
     GroupRepository,
     UserPreferencesRepository,
@@ -16,6 +17,7 @@ class UnitOfWork(Protocol):
     dicks: DickRepository
     groups: GroupRepository
     user_preferences: UserPreferencesRepository
+    battles: BattleRepository
 
     async def __aenter__(self) -> Self: ...
 

@@ -19,3 +19,26 @@ class NotAnAdmin(DomainError):
 
 class SelfInteraction(DomainError):
     """Raised when a user tries to interact with themselves."""
+
+
+class BattlesDisabled(DomainError):
+    """Battles are turned off in this chat's settings."""
+
+
+class InsufficientDickSize(DomainError):
+    def __init__(self, needed: int, actual: int) -> None:
+        super().__init__(f"Need {needed} cm, have {actual}")
+        self.needed = needed
+        self.actual = actual
+
+
+class BattleNotFound(DomainError):
+    pass
+
+
+class BattleNotPending(DomainError):
+    pass
+
+
+class NotYourBattle(DomainError):
+    """Someone other than the invited opponent tried to respond."""

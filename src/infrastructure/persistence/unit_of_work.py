@@ -5,6 +5,9 @@ from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.infrastructure.persistence.repositories.battle_repository import (
+    SqlAlchemyBattleRepository,
+)
 from src.infrastructure.persistence.repositories.dick_repository import (
     SqlAlchemyDickRepository,
 )
@@ -24,6 +27,7 @@ class SqlAlchemyUnitOfWork:
     dicks: SqlAlchemyDickRepository
     groups: SqlAlchemyGroupRepository
     user_preferences: SqlAlchemyUserPreferencesRepository
+    battles: SqlAlchemyBattleRepository
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
@@ -35,6 +39,7 @@ class SqlAlchemyUnitOfWork:
         self.dicks = SqlAlchemyDickRepository(self._session)
         self.groups = SqlAlchemyGroupRepository(self._session)
         self.user_preferences = SqlAlchemyUserPreferencesRepository(self._session)
+        self.battles = SqlAlchemyBattleRepository(self._session)
         return self
 
     async def __aexit__(

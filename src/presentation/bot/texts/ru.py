@@ -30,6 +30,7 @@ def start() -> str:
         "Основные команды:\n"
         "• /grow — вырастить писюнчик (раз в сутки)\n"
         "• /pet | /kiss | /fuck — reply на сообщение\n"
+        "• /battle [ставка] — вызов на битву (reply)\n"
         "• /me — что со мной можно делать в этом чате\n"
         "• /settings — настройки чата (только для админов)\n"
         "• /top — топ (скоро)\n"
@@ -103,4 +104,63 @@ def me_header() -> str:
     return (
         "<b>Что со мной можно делать в этом чате</b>\n"
         "Если галочка стоит — разрешено. Настройки группы имеют приоритет."
+    )
+
+
+def battle_only_in_groups() -> str:
+    return "Битвы — только в группах, вызывай reply на сообщение противника."
+
+
+def battle_needs_reply() -> str:
+    return "Ответь на сообщение того, с кем хочешь сразиться: /battle [ставка]."
+
+
+def battle_bad_stake() -> str:
+    return "Ставка — целое число ≥ 1 см."
+
+
+def battles_disabled() -> str:
+    return "🚫 Битвы отключены в этом чате."
+
+
+def battle_challenge(
+    challenger_mention: str, opponent_mention: str, stake_cm: int
+) -> str:
+    return (
+        f"⚔️ {challenger_mention} вызывает {opponent_mention} на битву!\n"
+        f"Ставка: <b>{stake_cm} см</b>. Ответ ждём 5 минут."
+    )
+
+
+def battle_insufficient(needed: int, actual: int) -> str:
+    return f"Не хватает: нужно {needed} см, есть {actual}."
+
+
+def battle_declined(opponent_mention: str) -> str:
+    return f"✋ {opponent_mention} отклонил вызов."
+
+
+def battle_expired() -> str:
+    return "⏰ Вызов истёк."
+
+
+def battle_not_your() -> str:
+    return "Это не твой вызов — ответить может только вызванный."
+
+
+def battle_not_pending() -> str:
+    return "На этот вызов уже ответили."
+
+
+def battle_resolved(
+    winner_mention: str,
+    loser_mention: str,
+    stake_cm: int,
+    winner_size_cm: int,
+    loser_size_cm: int,
+) -> str:
+    return (
+        f"🏆 Победил {winner_mention}!\n"
+        f"{winner_mention}: <b>{winner_size_cm} см</b> (+{stake_cm})\n"
+        f"{loser_mention}: <b>{loser_size_cm} см</b> (-{stake_cm})"
     )

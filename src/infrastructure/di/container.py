@@ -15,6 +15,7 @@ from src.application.ports.clock import Clock
 from src.application.ports.randomizer import Randomizer
 from src.application.ports.telegram_gateway import TelegramGateway
 from src.application.ports.unit_of_work import UnitOfWork
+from src.application.use_cases.challenge_battle import ChallengeBattleUseCase
 from src.application.use_cases.ensure_group_registered import (
     EnsureGroupRegisteredUseCase,
 )
@@ -22,6 +23,7 @@ from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
 from src.application.use_cases.perform_interaction import PerformInteractionUseCase
+from src.application.use_cases.respond_to_battle import RespondToBattleUseCase
 from src.application.use_cases.toggle_my_preference import ToggleMyPreferenceUseCase
 from src.application.use_cases.update_group_settings import UpdateGroupSettingsUseCase
 from src.infrastructure.config.settings import Settings
@@ -125,6 +127,18 @@ class RequestProvider(Provider):
         self, uow: UnitOfWork, clock: Clock
     ) -> ToggleMyPreferenceUseCase:
         return ToggleMyPreferenceUseCase(uow, clock)
+
+    @provide
+    def challenge_battle(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> ChallengeBattleUseCase:
+        return ChallengeBattleUseCase(uow, clock)
+
+    @provide
+    def respond_to_battle(
+        self, uow: UnitOfWork, clock: Clock, randomizer: Randomizer
+    ) -> RespondToBattleUseCase:
+        return RespondToBattleUseCase(uow, clock, randomizer)
 
 
 def build_container(settings: Settings, bot: Bot):
