@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from html import escape
 
+from src.application.dto.stats import UserGlobalStats
 from src.domain.services.interaction_policy import Denial
 from src.domain.value_objects.interaction_type import InteractionType
 
@@ -31,9 +32,10 @@ def start() -> str:
         "• /grow — вырастить писюнчик (раз в сутки)\n"
         "• /pet | /kiss | /fuck — reply на сообщение\n"
         "• /battle [ставка] — вызов на битву (reply)\n"
+        "• /top — топ 10 в этом чате\n"
         "• /me — что со мной можно делать в этом чате\n"
-        "• /settings — настройки чата (только для админов)\n"
-        "• /top — топ (скоро)\n"
+        "• /settings — настройки чата (только для админов)\n\n"
+        "Ещё умею inline: набери <code>@pipagrad_bot</code> в любом чате."
     )
 
 
@@ -163,4 +165,44 @@ def battle_resolved(
         f"🏆 Победил {winner_mention}!\n"
         f"{winner_mention}: <b>{winner_size_cm} см</b> (+{stake_cm})\n"
         f"{loser_mention}: <b>{loser_size_cm} см</b> (-{stake_cm})"
+    )
+
+
+def top_only_in_groups() -> str:
+    return "Топ — команда для группы."
+
+
+def top_empty() -> str:
+    return "В этом чате ещё никто не растил писюнчик. Напиши /grow."
+
+
+def top_header() -> str:
+    return "<b>🏆 Топ чата</b>"
+
+
+def top_line(rank: int, mention: str, size_cm: int) -> str:
+    medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f" {rank}.")
+    return f"{medal} {mention} — <b>{size_cm} см</b>"
+
+
+def inline_card_title() -> str:
+    return "🍆 Мой писюнчик"
+
+
+def inline_card_description(stats: UserGlobalStats | None) -> str:
+    if stats is None:
+        return "Пока пусто — начни /grow в группе."
+    return f"Максимум {stats.max_cm} см, всего {stats.total_cm} см в {stats.chats_count} чат(-ах)"
+
+
+def inline_card_message(user_mention: str, stats: UserGlobalStats | None) -> str:
+    if stats is None:
+        return (
+            f"У {user_mention} пока нет писюнчика 😢\n"
+            f"Начни /grow в группе, чтобы им похвастаться."
+        )
+    return (
+        f"🍆 <b>Писюнчик {user_mention}</b>\n"
+        f"Максимум: <b>{stats.max_cm} см</b>\n"
+        f"Всего: <b>{stats.total_cm} см</b> в {stats.chats_count} чат(-ах)"
     )

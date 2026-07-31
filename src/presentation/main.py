@@ -13,6 +13,7 @@ from src.infrastructure.scheduler.aps import RandomEventsScheduler
 from src.presentation.bot.handlers.battle import router as battle_router
 from src.presentation.bot.handlers.chat_member import router as chat_member_router
 from src.presentation.bot.handlers.commands import router as commands_router
+from src.presentation.bot.handlers.inline import router as inline_router
 from src.presentation.bot.handlers.interactions import router as interactions_router
 from src.presentation.bot.handlers.me import router as me_router
 from src.presentation.bot.handlers.settings import router as settings_router
@@ -34,6 +35,7 @@ async def main() -> None:
     dp.include_router(me_router)
     dp.include_router(interactions_router)
     dp.include_router(battle_router)
+    dp.include_router(inline_router)
     dp.include_router(chat_member_router)
 
     setup_dishka(container=container, router=dp, auto_inject=True)

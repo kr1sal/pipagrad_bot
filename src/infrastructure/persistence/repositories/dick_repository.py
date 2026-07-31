@@ -38,6 +38,23 @@ class SqlAlchemyDickRepository:
         rows = (await self._session.scalars(stmt)).all()
         return [_to_entity(r) for r in rows]
 
+    async def list_top_for_chat(
+        self, chat_id: TelegramChatId, limit: int
+    ) -> list[Dick]:
+        stmt = (
+            select(DickModel)
+            .where(DickModel.chat_id == int(chat_id))
+            .order_by(DickModel.size_cm.desc(), DickModel.id.asc())
+            .limit(limit)
+        )
+        rows = (await self._session.scalars(stmt)).all()
+        return [_to_entity(r) for r in rows]
+
+    async def list_all_for_user(self, user_id: int) -> list[Dick]:
+        stmt = select(DickModel).where(DickModel.user_id == user_id)
+        rows = (await self._session.scalars(stmt)).all()
+        return [_to_entity(r) for r in rows]
+
     async def update(self, dick: Dick) -> None:
         assert dick.id is not None
         stmt = (
