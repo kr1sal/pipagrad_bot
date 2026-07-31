@@ -52,6 +52,7 @@ class Group:
     added_by_tg_id: TelegramUserId | None
     created_at: datetime
     settings: GroupSettings = field(default_factory=GroupSettings.default)
+    last_random_event_at: datetime | None = None
 
     @classmethod
     def new(
@@ -67,4 +68,5 @@ class Group:
             added_by_tg_id=added_by_tg_id,
             created_at=now,
             settings=GroupSettings.default(),
+            last_random_event_at=None,
         )

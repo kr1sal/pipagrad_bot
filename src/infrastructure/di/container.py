@@ -25,6 +25,9 @@ from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
 from src.application.use_cases.perform_interaction import PerformInteractionUseCase
 from src.application.use_cases.respond_to_battle import RespondToBattleUseCase
 from src.application.use_cases.toggle_my_preference import ToggleMyPreferenceUseCase
+from src.application.use_cases.trigger_random_events import (
+    TriggerRandomEventsCycleUseCase,
+)
 from src.application.use_cases.update_group_settings import UpdateGroupSettingsUseCase
 from src.infrastructure.config.settings import Settings
 from src.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -139,6 +142,16 @@ class RequestProvider(Provider):
         self, uow: UnitOfWork, clock: Clock, randomizer: Randomizer
     ) -> RespondToBattleUseCase:
         return RespondToBattleUseCase(uow, clock, randomizer)
+
+    @provide
+    def trigger_random_events(
+        self,
+        uow: UnitOfWork,
+        clock: Clock,
+        randomizer: Randomizer,
+        telegram: TelegramGateway,
+    ) -> TriggerRandomEventsCycleUseCase:
+        return TriggerRandomEventsCycleUseCase(uow, clock, randomizer, telegram)
 
 
 def build_container(settings: Settings, bot: Bot):

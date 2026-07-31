@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from src.domain.entities.battle import Battle
@@ -31,6 +32,8 @@ class DickRepository(Protocol):
 
     async def update(self, dick: Dick) -> None: ...
 
+    async def list_for_chat(self, chat_id: TelegramChatId) -> list[Dick]: ...
+
 
 class GroupRepository(Protocol):
     async def get(self, chat_id: TelegramChatId) -> Group | None: ...
@@ -39,6 +42,14 @@ class GroupRepository(Protocol):
 
     async def update_settings(
         self, chat_id: TelegramChatId, settings: GroupSettings
+    ) -> None: ...
+
+    async def list_with_random_events_ready(
+        self, now: datetime
+    ) -> list[Group]: ...
+
+    async def mark_random_event_fired(
+        self, chat_id: TelegramChatId, now: datetime
     ) -> None: ...
 
 

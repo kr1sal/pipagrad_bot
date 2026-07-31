@@ -23,3 +23,6 @@ class AiogramTelegramGateway:
         except (TelegramBadRequest, TelegramForbiddenError):
             return False
         return member.status in _ADMIN_STATUSES
+
+    async def send_message(self, chat_id: TelegramChatId, text: str) -> None:
+        await self._bot.send_message(chat_id=int(chat_id), text=text)

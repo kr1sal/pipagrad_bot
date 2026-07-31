@@ -33,6 +33,11 @@ class SqlAlchemyDickRepository:
         dick.id = model.id
         return dick
 
+    async def list_for_chat(self, chat_id: TelegramChatId) -> list[Dick]:
+        stmt = select(DickModel).where(DickModel.chat_id == int(chat_id))
+        rows = (await self._session.scalars(stmt)).all()
+        return [_to_entity(r) for r in rows]
+
     async def update(self, dick: Dick) -> None:
         assert dick.id is not None
         stmt = (

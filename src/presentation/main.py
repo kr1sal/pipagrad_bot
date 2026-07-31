@@ -9,6 +9,7 @@ from dishka.integrations.aiogram import setup_dishka
 
 from src.infrastructure.config.settings import Settings
 from src.infrastructure.di.container import build_container
+from src.infrastructure.scheduler.aps import RandomEventsScheduler
 from src.presentation.bot.handlers.battle import router as battle_router
 from src.presentation.bot.handlers.chat_member import router as chat_member_router
 from src.presentation.bot.handlers.commands import router as commands_router
@@ -37,10 +38,14 @@ async def main() -> None:
 
     setup_dishka(container=container, router=dp, auto_inject=True)
 
+    scheduler = RandomEventsScheduler(container, tick_seconds=60)
+    scheduler.start()
+
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
     finally:
+        scheduler.shutdown()
         await bot.session.close()
         await container.close()
 

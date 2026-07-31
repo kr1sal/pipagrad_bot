@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +32,7 @@ class SqlAlchemyGroupRepository:
             allow_pet=InteractionType.PET in group.settings.allowed_interactions,
             allow_kiss=InteractionType.KISS in group.settings.allowed_interactions,
             allow_fuck=InteractionType.FUCK in group.settings.allowed_interactions,
+            last_random_event_at=group.last_random_event_at,
         )
         self._session.add(model)
         await self._session.flush()
@@ -49,6 +52,34 @@ class SqlAlchemyGroupRepository:
                 allow_kiss=InteractionType.KISS in settings.allowed_interactions,
                 allow_fuck=InteractionType.FUCK in settings.allowed_interactions,
             )
+        )
+        await self._session.execute(stmt)
+
+    async def list_with_random_events_ready(self, now: datetime) -> list[Group]:
+        """
+        Return groups where random events are enabled AND either never fired or
+        the interval has elapsed. Filter in Python — the group set is small at
+        current scale, and interval-arithmetic in SQL is fiddly across dialects.
+        """
+        stmt = select(GroupModel).where(GroupModel.random_events_enabled.is_(True))
+        rows = (await self._session.scalars(stmt)).all()
+        ready: list[Group] = []
+        for m in rows:
+            if m.last_random_event_at is None:
+                ready.append(_to_entity(m))
+                continue
+            elapsed = now - m.last_random_event_at
+            if elapsed >= timedelta(minutes=m.random_event_interval_minutes):
+                ready.append(_to_entity(m))
+        return ready
+
+    async def mark_random_event_fired(
+        self, chat_id: TelegramChatId, now: datetime
+    ) -> None:
+        stmt = (
+            update(GroupModel)
+            .where(GroupModel.chat_id == int(chat_id))
+            .values(last_random_event_at=now)
         )
         await self._session.execute(stmt)
 
@@ -77,4 +108,5 @@ def _to_entity(model: GroupModel) -> Group:
             random_event_interval_minutes=model.random_event_interval_minutes,
             allowed_interactions=frozenset(allowed),
         ),
+        last_random_event_at=model.last_random_event_at,
     )
