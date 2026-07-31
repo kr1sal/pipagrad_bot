@@ -6,7 +6,7 @@ from src.domain.value_objects.telegram_ids import TelegramUserId
 
 
 @dataclass(frozen=True, slots=True)
-class ChatTopEntry:
+class TopEntry:
     rank: int
     tg_id: TelegramUserId
     username: str | None

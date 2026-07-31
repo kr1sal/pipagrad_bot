@@ -28,6 +28,8 @@ class InteractionPerformed:
 class InteractionDenied:
     kind: InteractionType
     reason: Denial
+    current_ml: int | None = None
+    cost_ml: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

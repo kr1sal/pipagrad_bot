@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.dick import Dick
@@ -54,6 +54,17 @@ class SqlAlchemyDickRepository:
         stmt = select(DickModel).where(DickModel.user_id == user_id)
         rows = (await self._session.scalars(stmt)).all()
         return [_to_entity(r) for r in rows]
+
+    async def list_global_top_by_max(self, limit: int) -> list[tuple[int, int]]:
+        max_size = func.max(DickModel.size_cm).label("max_size")
+        stmt = (
+            select(DickModel.user_id, max_size)
+            .group_by(DickModel.user_id)
+            .order_by(max_size.desc(), DickModel.user_id.asc())
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        return [(row.user_id, row.max_size) for row in result.all()]
 
     async def update(self, dick: Dick) -> None:
         assert dick.id is not None

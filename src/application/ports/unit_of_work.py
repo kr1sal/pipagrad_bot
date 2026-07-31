@@ -7,6 +7,7 @@ from src.application.ports.repositories import (
     BattleRepository,
     DickRepository,
     GroupRepository,
+    SemenBalanceRepository,
     UserPreferencesRepository,
     UserRepository,
 )
@@ -18,6 +19,7 @@ class UnitOfWork(Protocol):
     groups: GroupRepository
     user_preferences: UserPreferencesRepository
     battles: BattleRepository
+    semen: SemenBalanceRepository
 
     async def __aenter__(self) -> Self: ...
 

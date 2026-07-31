@@ -91,6 +91,23 @@ class BattleModel(Base):
     )
 
 
+class SemenBalanceModel(Base):
+    __tablename__ = "semen_balances"
+    __table_args__ = (
+        UniqueConstraint("user_id", "chat_id", name="uq_semen_user_chat"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    stored_ml: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
 class UserPreferencesModel(Base):
     __tablename__ = "user_preferences"
     __table_args__ = (

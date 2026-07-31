@@ -6,6 +6,7 @@ from typing import Protocol
 from src.domain.entities.battle import Battle
 from src.domain.entities.dick import Dick
 from src.domain.entities.group import Group, GroupSettings
+from src.domain.entities.semen_balance import SemenBalance
 from src.domain.entities.user import User
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 from src.domain.value_objects.user_preferences import UserPreferences
@@ -39,6 +40,13 @@ class DickRepository(Protocol):
     ) -> list[Dick]: ...
 
     async def list_all_for_user(self, user_id: int) -> list[Dick]: ...
+
+    async def list_global_top_by_max(self, limit: int) -> list[tuple[int, int]]:
+        """
+        Returns (user_id, max_size_cm) pairs, sorted by max_size_cm desc, tie-
+        broken by user_id asc for a stable order. Limited to `limit` rows.
+        """
+        ...
 
 
 class GroupRepository(Protocol):
@@ -78,3 +86,13 @@ class BattleRepository(Protocol):
     async def get(self, battle_id: int) -> Battle | None: ...
 
     async def update(self, battle: Battle) -> None: ...
+
+
+class SemenBalanceRepository(Protocol):
+    async def get(
+        self, user_id: int, chat_id: TelegramChatId
+    ) -> SemenBalance | None: ...
+
+    async def upsert(self, balance: SemenBalance) -> SemenBalance:
+        """Insert or update; returns the entity with `id` populated on insert."""
+        ...

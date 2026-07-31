@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from aiogram import Router
-from aiogram.enums import ChatType
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from dishka.integrations.aiogram import FromDishka, inject
@@ -11,14 +10,12 @@ from src.application.dto.grow_dick import (
     GrowDickCooldown,
     GrowDickResult,
 )
-from src.application.use_cases.get_chat_top import GetChatTopUseCase
+from src.application.use_cases.get_global_top import GetGlobalTopUseCase
 from src.application.use_cases.grow_dick import GrowDickUseCase
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 from src.presentation.bot.texts import ru as texts
 
 router = Router(name="commands")
-
-_GROUP_TYPES = {ChatType.GROUP, ChatType.SUPERGROUP}
 
 
 @router.message(CommandStart())
@@ -53,12 +50,9 @@ async def handle_grow(
 @inject
 async def handle_top(
     message: Message,
-    get_top: FromDishka[GetChatTopUseCase],
+    get_top: FromDishka[GetGlobalTopUseCase],
 ) -> None:
-    if message.chat.type not in _GROUP_TYPES:
-        await message.reply(texts.top_only_in_groups())
-        return
-    entries = await get_top.execute(TelegramChatId(message.chat.id), limit=10)
+    entries = await get_top.execute(limit=10)
     if not entries:
         await message.reply(texts.top_empty())
         return

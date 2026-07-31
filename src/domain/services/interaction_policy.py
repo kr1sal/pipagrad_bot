@@ -12,6 +12,8 @@ class Denial(str, Enum):
 
     BY_GROUP = "by_group"
     BY_TARGET = "by_target"
+    ACTOR_NO_SEMEN = "actor_no_semen"
+    TARGET_NO_SEMEN = "target_no_semen"
 
 
 def check(

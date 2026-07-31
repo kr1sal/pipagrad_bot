@@ -51,7 +51,14 @@ async def _handle(
         return
 
     if isinstance(result, InteractionDenied):
-        await message.reply(texts.interaction_denied(result.kind, result.reason))
+        await message.reply(
+            texts.interaction_denied(
+                kind=result.kind,
+                reason=result.reason,
+                current_ml=result.current_ml,
+                cost_ml=result.cost_ml,
+            )
+        )
         return
 
     assert isinstance(result, InteractionPerformed)

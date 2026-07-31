@@ -91,11 +91,28 @@ def interaction_done(
     return f"{actor_mention} {verb} {target_mention} 💫"
 
 
-def interaction_denied(kind: InteractionType, reason: Denial) -> str:
+def interaction_denied(
+    kind: InteractionType,
+    reason: Denial,
+    current_ml: int | None = None,
+    cost_ml: int | None = None,
+) -> str:
     verb = _VERB_NOUN[kind]
     if reason is Denial.BY_GROUP:
         return f"🚫 В этом чате запрещено {verb}."
-    return f"🚫 Этот человек не разрешает {verb} себя."
+    if reason is Denial.BY_TARGET:
+        return f"🚫 Этот человек не разрешает {verb} себя."
+    if reason is Denial.ACTOR_NO_SEMEN:
+        return (
+            f"💤 У тебя не хватает спермы: <b>{current_ml}/{cost_ml} мл</b>.\n"
+            f"Подожди, накопится — регенерация идёт со временем."
+        )
+    if reason is Denial.TARGET_NO_SEMEN:
+        return (
+            f"💤 У него/неё не хватает спермы: <b>{current_ml}/{cost_ml} мл</b>.\n"
+            f"Не сегодня, увы."
+        )
+    return "🚫 Отказ."
 
 
 def me_only_in_groups() -> str:
@@ -168,16 +185,12 @@ def battle_resolved(
     )
 
 
-def top_only_in_groups() -> str:
-    return "Топ — команда для группы."
-
-
 def top_empty() -> str:
-    return "В этом чате ещё никто не растил писюнчик. Напиши /grow."
+    return "Пока никто нигде не растил писюнчик. Напиши /grow в группе."
 
 
 def top_header() -> str:
-    return "<b>🏆 Топ чата</b>"
+    return "<b>🏆 Глобальный топ</b> (по максимуму среди всех чатов)"
 
 
 def top_line(rank: int, mention: str, size_cm: int) -> str:

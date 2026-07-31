@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     grow_min_delta_cm: int = Field(default=-5, alias="GROW_MIN_DELTA_CM")
     grow_max_delta_cm: int = Field(default=10, alias="GROW_MAX_DELTA_CM")
 
+    semen_cap_ml: int = Field(default=100, alias="SEMEN_CAP_ML")
+    semen_regen_per_hour: int = Field(default=6, alias="SEMEN_REGEN_PER_HOUR")
+    fuck_cost_ml: int = Field(default=20, alias="FUCK_COST_ML")
+
     @property
     def postgres_dsn(self) -> str:
         return (

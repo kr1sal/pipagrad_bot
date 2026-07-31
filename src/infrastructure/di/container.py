@@ -19,7 +19,7 @@ from src.application.use_cases.challenge_battle import ChallengeBattleUseCase
 from src.application.use_cases.ensure_group_registered import (
     EnsureGroupRegisteredUseCase,
 )
-from src.application.use_cases.get_chat_top import GetChatTopUseCase
+from src.application.use_cases.get_global_top import GetGlobalTopUseCase
 from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.get_user_global_stats import GetUserGlobalStatsUseCase
@@ -31,6 +31,7 @@ from src.application.use_cases.trigger_random_events import (
     TriggerRandomEventsCycleUseCase,
 )
 from src.application.use_cases.update_group_settings import UpdateGroupSettingsUseCase
+from src.domain.entities.semen_balance import SemenConfig
 from src.infrastructure.config.settings import Settings
 from src.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from src.infrastructure.system.clock import SystemClock
@@ -62,6 +63,14 @@ class AppProvider(Provider):
             cooldown=timedelta(hours=settings.grow_cooldown_hours),
             min_delta_cm=settings.grow_min_delta_cm,
             max_delta_cm=settings.grow_max_delta_cm,
+        )
+
+    @provide
+    def semen_config(self, settings: Settings) -> SemenConfig:
+        return SemenConfig(
+            cap_ml=settings.semen_cap_ml,
+            regen_per_hour=settings.semen_regen_per_hour,
+            fuck_cost_ml=settings.fuck_cost_ml,
         )
 
     @provide
@@ -117,9 +126,9 @@ class RequestProvider(Provider):
 
     @provide
     def perform_interaction(
-        self, uow: UnitOfWork, clock: Clock
+        self, uow: UnitOfWork, clock: Clock, semen_config: SemenConfig
     ) -> PerformInteractionUseCase:
-        return PerformInteractionUseCase(uow, clock)
+        return PerformInteractionUseCase(uow, clock, semen_config)
 
     @provide
     def get_my_preferences(
@@ -156,8 +165,8 @@ class RequestProvider(Provider):
         return TriggerRandomEventsCycleUseCase(uow, clock, randomizer, telegram)
 
     @provide
-    def get_chat_top(self, uow: UnitOfWork) -> GetChatTopUseCase:
-        return GetChatTopUseCase(uow)
+    def get_global_top(self, uow: UnitOfWork) -> GetGlobalTopUseCase:
+        return GetGlobalTopUseCase(uow)
 
     @provide
     def get_user_global_stats(self, uow: UnitOfWork) -> GetUserGlobalStatsUseCase:

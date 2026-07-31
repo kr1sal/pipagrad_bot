@@ -14,6 +14,9 @@ from src.infrastructure.persistence.repositories.dick_repository import (
 from src.infrastructure.persistence.repositories.group_repository import (
     SqlAlchemyGroupRepository,
 )
+from src.infrastructure.persistence.repositories.semen_balance_repository import (
+    SqlAlchemySemenBalanceRepository,
+)
 from src.infrastructure.persistence.repositories.user_preferences_repository import (
     SqlAlchemyUserPreferencesRepository,
 )
@@ -28,6 +31,7 @@ class SqlAlchemyUnitOfWork:
     groups: SqlAlchemyGroupRepository
     user_preferences: SqlAlchemyUserPreferencesRepository
     battles: SqlAlchemyBattleRepository
+    semen: SqlAlchemySemenBalanceRepository
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
@@ -40,6 +44,7 @@ class SqlAlchemyUnitOfWork:
         self.groups = SqlAlchemyGroupRepository(self._session)
         self.user_preferences = SqlAlchemyUserPreferencesRepository(self._session)
         self.battles = SqlAlchemyBattleRepository(self._session)
+        self.semen = SqlAlchemySemenBalanceRepository(self._session)
         return self
 
     async def __aexit__(
