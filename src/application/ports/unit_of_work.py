@@ -6,6 +6,7 @@ from typing import Protocol, Self
 from src.application.ports.repositories import (
     DickRepository,
     GroupRepository,
+    UserPreferencesRepository,
     UserRepository,
 )
 
@@ -14,6 +15,7 @@ class UnitOfWork(Protocol):
     users: UserRepository
     dicks: DickRepository
     groups: GroupRepository
+    user_preferences: UserPreferencesRepository
 
     async def __aenter__(self) -> Self: ...
 

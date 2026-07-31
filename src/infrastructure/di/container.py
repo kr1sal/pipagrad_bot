@@ -19,7 +19,10 @@ from src.application.use_cases.ensure_group_registered import (
     EnsureGroupRegisteredUseCase,
 )
 from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
+from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
+from src.application.use_cases.perform_interaction import PerformInteractionUseCase
+from src.application.use_cases.toggle_my_preference import ToggleMyPreferenceUseCase
 from src.application.use_cases.update_group_settings import UpdateGroupSettingsUseCase
 from src.infrastructure.config.settings import Settings
 from src.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -104,6 +107,24 @@ class RequestProvider(Provider):
         telegram: TelegramGateway,
     ) -> UpdateGroupSettingsUseCase:
         return UpdateGroupSettingsUseCase(uow, clock, telegram)
+
+    @provide
+    def perform_interaction(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> PerformInteractionUseCase:
+        return PerformInteractionUseCase(uow, clock)
+
+    @provide
+    def get_my_preferences(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> GetMyPreferencesUseCase:
+        return GetMyPreferencesUseCase(uow, clock)
+
+    @provide
+    def toggle_my_preference(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> ToggleMyPreferenceUseCase:
+        return ToggleMyPreferenceUseCase(uow, clock)
 
 
 def build_container(settings: Settings, bot: Bot):

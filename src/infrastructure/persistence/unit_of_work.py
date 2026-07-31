@@ -11,6 +11,9 @@ from src.infrastructure.persistence.repositories.dick_repository import (
 from src.infrastructure.persistence.repositories.group_repository import (
     SqlAlchemyGroupRepository,
 )
+from src.infrastructure.persistence.repositories.user_preferences_repository import (
+    SqlAlchemyUserPreferencesRepository,
+)
 from src.infrastructure.persistence.repositories.user_repository import (
     SqlAlchemyUserRepository,
 )
@@ -20,6 +23,7 @@ class SqlAlchemyUnitOfWork:
     users: SqlAlchemyUserRepository
     dicks: SqlAlchemyDickRepository
     groups: SqlAlchemyGroupRepository
+    user_preferences: SqlAlchemyUserPreferencesRepository
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
@@ -30,6 +34,7 @@ class SqlAlchemyUnitOfWork:
         self.users = SqlAlchemyUserRepository(self._session)
         self.dicks = SqlAlchemyDickRepository(self._session)
         self.groups = SqlAlchemyGroupRepository(self._session)
+        self.user_preferences = SqlAlchemyUserPreferencesRepository(self._session)
         return self
 
     async def __aexit__(

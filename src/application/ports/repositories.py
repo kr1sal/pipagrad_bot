@@ -6,6 +6,7 @@ from src.domain.entities.dick import Dick
 from src.domain.entities.group import Group, GroupSettings
 from src.domain.entities.user import User
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
+from src.domain.value_objects.user_preferences import UserPreferences
 
 
 class UserRepository(Protocol):
@@ -35,4 +36,17 @@ class GroupRepository(Protocol):
 
     async def update_settings(
         self, chat_id: TelegramChatId, settings: GroupSettings
+    ) -> None: ...
+
+
+class UserPreferencesRepository(Protocol):
+    async def get(
+        self, user_id: int, chat_id: TelegramChatId
+    ) -> UserPreferences | None: ...
+
+    async def upsert(
+        self,
+        user_id: int,
+        chat_id: TelegramChatId,
+        prefs: UserPreferences,
     ) -> None: ...

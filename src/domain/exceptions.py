@@ -15,3 +15,7 @@ class CooldownActive(DomainError):
 
 class NotAnAdmin(DomainError):
     """Raised when a non-admin tries to change group-wide settings."""
+
+
+class SelfInteraction(DomainError):
+    """Raised when a user tries to interact with themselves."""

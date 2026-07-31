@@ -64,3 +64,19 @@ class GroupModel(Base):
     allow_pet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_kiss: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_fuck: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class UserPreferencesModel(Base):
+    __tablename__ = "user_preferences"
+    __table_args__ = (
+        UniqueConstraint("user_id", "chat_id", name="uq_prefs_user_chat"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    allow_pet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    allow_kiss: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    allow_fuck: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
