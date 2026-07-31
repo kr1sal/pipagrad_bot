@@ -17,5 +17,19 @@ services:
       timeout: 5s
       retries: 10
 
+  bot:
+    build: .
+    container_name: pipagrad-bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # inside the compose network, reach Postgres by service name
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+
 volumes:
   pipagrad-pgdata:
