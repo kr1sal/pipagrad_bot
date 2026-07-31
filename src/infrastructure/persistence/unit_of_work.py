@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from src.infrastructure.persistence.repositories.dick_repository import (
     SqlAlchemyDickRepository,
 )
+from src.infrastructure.persistence.repositories.group_repository import (
+    SqlAlchemyGroupRepository,
+)
 from src.infrastructure.persistence.repositories.user_repository import (
     SqlAlchemyUserRepository,
 )
@@ -16,6 +19,7 @@ from src.infrastructure.persistence.repositories.user_repository import (
 class SqlAlchemyUnitOfWork:
     users: SqlAlchemyUserRepository
     dicks: SqlAlchemyDickRepository
+    groups: SqlAlchemyGroupRepository
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
@@ -25,6 +29,7 @@ class SqlAlchemyUnitOfWork:
         self._session = self._session_factory()
         self.users = SqlAlchemyUserRepository(self._session)
         self.dicks = SqlAlchemyDickRepository(self._session)
+        self.groups = SqlAlchemyGroupRepository(self._session)
         return self
 
     async def __aexit__(

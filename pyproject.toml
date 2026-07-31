@@ -1,5 +1,5 @@
 [project]
-name = "tg-dick-bot"
+name = "pipagrad-bot"
 version = "0.1.0"
 description = "Inline Telegram bot with grow / battle / interaction / random-event mechanics"
 requires-python = ">=3.12"

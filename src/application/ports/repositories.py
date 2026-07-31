@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from src.domain.entities.dick import Dick
+from src.domain.entities.group import Group, GroupSettings
 from src.domain.entities.user import User
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 
@@ -25,3 +26,13 @@ class DickRepository(Protocol):
         ...
 
     async def update(self, dick: Dick) -> None: ...
+
+
+class GroupRepository(Protocol):
+    async def get(self, chat_id: TelegramChatId) -> Group | None: ...
+
+    async def add(self, group: Group) -> Group: ...
+
+    async def update_settings(
+        self, chat_id: TelegramChatId, settings: GroupSettings
+    ) -> None: ...

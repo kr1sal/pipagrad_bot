@@ -11,9 +11,9 @@ class Settings(BaseSettings):
 
     postgres_host: str = Field(default="localhost", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
-    postgres_db: str = Field(default="dickbot", alias="POSTGRES_DB")
-    postgres_user: str = Field(default="dickbot", alias="POSTGRES_USER")
-    postgres_password: str = Field(default="dickbot", alias="POSTGRES_PASSWORD")
+    postgres_db: str = Field(default="pipagrad", alias="POSTGRES_DB")
+    postgres_user: str = Field(default="pipagrad", alias="POSTGRES_USER")
+    postgres_password: str = Field(default="pipagrad", alias="POSTGRES_PASSWORD")
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 

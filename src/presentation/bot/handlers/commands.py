@@ -42,4 +42,4 @@ async def handle_grow(
         text = texts.grow_success(result.delta_cm, result.new_size_cm)
     else:  # pragma: no cover
         text = "?"
-    await message.reply(text, parse_mode="HTML")
+    await message.reply(text)

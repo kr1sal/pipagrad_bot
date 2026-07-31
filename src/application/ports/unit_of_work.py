@@ -3,12 +3,17 @@ from __future__ import annotations
 from types import TracebackType
 from typing import Protocol, Self
 
-from src.application.ports.repositories import DickRepository, UserRepository
+from src.application.ports.repositories import (
+    DickRepository,
+    GroupRepository,
+    UserRepository,
+)
 
 
 class UnitOfWork(Protocol):
     users: UserRepository
     dicks: DickRepository
+    groups: GroupRepository
 
     async def __aenter__(self) -> Self: ...
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from aiogram import Bot
 from dishka import Provider, Scope, from_context, make_async_container, provide
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -12,18 +13,26 @@ from sqlalchemy.ext.asyncio import (
 
 from src.application.ports.clock import Clock
 from src.application.ports.randomizer import Randomizer
+from src.application.ports.telegram_gateway import TelegramGateway
 from src.application.ports.unit_of_work import UnitOfWork
+from src.application.use_cases.ensure_group_registered import (
+    EnsureGroupRegisteredUseCase,
+)
+from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
+from src.application.use_cases.update_group_settings import UpdateGroupSettingsUseCase
 from src.infrastructure.config.settings import Settings
 from src.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from src.infrastructure.system.clock import SystemClock
 from src.infrastructure.system.randomizer import SystemRandomizer
+from src.infrastructure.telegram.aiogram_gateway import AiogramTelegramGateway
 
 
 class AppProvider(Provider):
     scope = Scope.APP
 
     settings = from_context(provides=Settings, scope=Scope.APP)
+    bot = from_context(provides=Bot, scope=Scope.APP)
 
     @provide
     def clock(self) -> Clock:
@@ -32,6 +41,10 @@ class AppProvider(Provider):
     @provide
     def randomizer(self) -> Randomizer:
         return SystemRandomizer()
+
+    @provide
+    def telegram_gateway(self, bot: Bot) -> TelegramGateway:
+        return AiogramTelegramGateway(bot)
 
     @provide
     def grow_config(self, settings: Settings) -> GrowDickConfig:
@@ -71,10 +84,31 @@ class RequestProvider(Provider):
     ) -> GrowDickUseCase:
         return GrowDickUseCase(uow, clock, randomizer, config)
 
+    @provide
+    def ensure_group_registered(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> EnsureGroupRegisteredUseCase:
+        return EnsureGroupRegisteredUseCase(uow, clock)
 
-def build_container(settings: Settings):
+    @provide
+    def get_group_settings(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> GetGroupSettingsUseCase:
+        return GetGroupSettingsUseCase(uow, clock)
+
+    @provide
+    def update_group_settings(
+        self,
+        uow: UnitOfWork,
+        clock: Clock,
+        telegram: TelegramGateway,
+    ) -> UpdateGroupSettingsUseCase:
+        return UpdateGroupSettingsUseCase(uow, clock, telegram)
+
+
+def build_container(settings: Settings, bot: Bot):
     return make_async_container(
         AppProvider(),
         RequestProvider(),
-        context={Settings: settings},
+        context={Settings: settings, Bot: bot},
     )

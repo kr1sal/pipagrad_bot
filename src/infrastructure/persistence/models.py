@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -36,3 +44,23 @@ class DickModel(Base):
     )
 
     user: Mapped[UserModel] = relationship(back_populates="dicks")
+
+
+class GroupModel(Base):
+    __tablename__ = "groups"
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    added_by_tg_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    battles_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    random_events_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    random_event_interval_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=60
+    )
+    allow_pet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    allow_kiss: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    allow_fuck: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
