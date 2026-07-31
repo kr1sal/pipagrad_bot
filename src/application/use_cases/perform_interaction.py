@@ -76,11 +76,16 @@ class PerformInteractionUseCase:
         now,
     ) -> InteractionDenied | None:
         cfg = self._semen_config
-        actor_bal = await self._load_balance(uow, actor_id, chat_id, now)
-        target_bal = await self._load_balance(uow, target_id, chat_id, now)
+        actor_cap = cfg.cap_for(await _dick_size(uow, actor_id, chat_id))
+        target_cap = cfg.cap_for(await _dick_size(uow, target_id, chat_id))
 
-        actor_current = actor_bal.current_ml(now, cfg)
-        target_current = target_bal.current_ml(now, cfg)
+        actor_bal = await self._load_balance(uow, actor_id, chat_id, now, actor_cap)
+        target_bal = await self._load_balance(
+            uow, target_id, chat_id, now, target_cap
+        )
+
+        actor_current = actor_bal.current_ml(now, cfg.regen_per_hour, actor_cap)
+        target_current = target_bal.current_ml(now, cfg.regen_per_hour, target_cap)
 
         if actor_current < cfg.fuck_cost_ml:
             return InteractionDenied(
@@ -97,20 +102,32 @@ class PerformInteractionUseCase:
                 cost_ml=cfg.fuck_cost_ml,
             )
 
-        # both have enough — spend and persist
-        actor_bal.try_spend(cfg.fuck_cost_ml, now, cfg)
-        target_bal.try_spend(cfg.fuck_cost_ml, now, cfg)
+        actor_bal.try_spend(cfg.fuck_cost_ml, now, cfg.regen_per_hour, actor_cap)
+        target_bal.try_spend(cfg.fuck_cost_ml, now, cfg.regen_per_hour, target_cap)
         await uow.semen.upsert(actor_bal)
         await uow.semen.upsert(target_bal)
         return None
 
     async def _load_balance(
-        self, uow: UnitOfWork, user_id: int, chat_id: TelegramChatId, now
+        self,
+        uow: UnitOfWork,
+        user_id: int,
+        chat_id: TelegramChatId,
+        now,
+        initial_cap_ml: int,
     ) -> SemenBalance:
         existing = await uow.semen.get(user_id, chat_id)
         if existing is not None:
             return existing
-        return SemenBalance.initial(user_id, chat_id, self._semen_config, now)
+        # Fresh players start at their current cap so first-timers can act.
+        return SemenBalance.initial(user_id, chat_id, initial_cap_ml, now)
+
+
+async def _dick_size(
+    uow: UnitOfWork, user_id: int, chat_id: TelegramChatId
+) -> int:
+    dick = await uow.dicks.get(user_id, chat_id)
+    return dick.size.cm if dick is not None else 0
 
 
 async def _get_or_create_group(

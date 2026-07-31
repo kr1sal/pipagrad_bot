@@ -68,7 +68,8 @@ class AppProvider(Provider):
     @provide
     def semen_config(self, settings: Settings) -> SemenConfig:
         return SemenConfig(
-            cap_ml=settings.semen_cap_ml,
+            base_cap_ml=settings.semen_base_cap_ml,
+            cap_per_cm=settings.semen_cap_per_cm,
             regen_per_hour=settings.semen_regen_per_hour,
             fuck_cost_ml=settings.fuck_cost_ml,
         )
