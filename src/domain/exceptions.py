@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+from datetime import timedelta
+
+
+class DomainError(Exception):
+    """Base class for domain-layer errors."""
+
+
+class CooldownActive(DomainError):
+    def __init__(self, remaining: timedelta) -> None:
+        super().__init__(f"Cooldown active, remaining={remaining}")
+        self.remaining = remaining
