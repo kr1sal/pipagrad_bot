@@ -256,6 +256,85 @@ def inline_help_description() -> str:
     return "Список команд и что они делают"
 
 
+def orgy_announcement(minutes_left: int) -> str:
+    return (
+        f"🎉 <b>Групповой секс!</b>\n"
+        f"Кто хочет — жми кнопку. Старт через <b>{minutes_left} мин</b>.\n"
+        f"Каждый участник потратит 10 мл спермы; кому хватит — получит +2 см."
+    )
+
+
+def orgy_resolved(participants_count: int, succeeded: int, bonus: int) -> str:
+    if succeeded == 0:
+        return (
+            f"🎉 <b>Групповой секс закончен.</b>\n"
+            f"Собралось {participants_count}, но ни у кого не хватило спермы. Позор."
+        )
+    return (
+        f"🎉 <b>Групповой секс закончен!</b>\n"
+        f"Пришло: {participants_count}, отыгрались: <b>{succeeded}</b>.\n"
+        f"Каждому +{bonus} см."
+    )
+
+
+def orgy_toast_joined() -> str:
+    return "Ты в деле."
+
+
+def orgy_toast_left() -> str:
+    return "Ты передумал(-а)."
+
+
+def bot_battle_announcement(
+    minutes_left: int, other_label: str
+) -> str:
+    return (
+        f"🤖 <b>Битва ботов!</b>\n"
+        f"<b>Pipagrad</b> vs <b>{other_label}</b>.\n"
+        f"Выбирай сторону — базовые силы 100/100, каждый игрок добавляет "
+        f"своим размером к своей стороне.\n"
+        f"Итог через <b>{minutes_left} мин</b>. Если Pipagrad побеждает — "
+        f"{other_label} вылетает из чата."
+    )
+
+
+def bot_battle_toast_side(side_label: str) -> str:
+    return f"Ты за {side_label}."
+
+
+def bot_battle_resolved_pipa_won(
+    other_label: str,
+    pipa_pot: int,
+    other_pot: int,
+    kicked: bool,
+) -> str:
+    tail = (
+        f"{other_label} <b>изгнан из чата</b>."
+        if kicked
+        else f"{other_label} остался — не хватило прав кикнуть."
+    )
+    return (
+        f"🏆 <b>Pipagrad побеждает!</b> ({pipa_pot} против {other_pot})\n{tail}"
+    )
+
+
+def bot_battle_resolved_other_won(
+    other_label: str, pipa_pot: int, other_pot: int
+) -> str:
+    return (
+        f"💀 <b>{other_label} побеждает.</b> ({other_pot} против {pipa_pot})\n"
+        f"Pipagrad сохраняет достоинство и уходит зализывать раны."
+    )
+
+
+def bot_battle_not_your_side() -> str:
+    return "Одна сторона на игрока — выбор нельзя менять."
+
+
+def pending_not_found() -> str:
+    return "Это событие уже завершилось."
+
+
 def inline_help_message() -> str:
     return (
         "<b>Pipagrad</b> — как играть 🍆\n\n"

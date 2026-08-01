@@ -12,3 +12,5 @@ class RandomEventKind(str, Enum):
     VIAGRA = "viagra"
     ICE_AGE = "ice_age"
     ROYAL_BATTLE = "royal_battle"
+    ORGY = "orgy"
+    BOT_BATTLE = "bot_battle"

@@ -6,6 +6,7 @@ from typing import Protocol
 from src.domain.entities.battle import Battle
 from src.domain.entities.dick import Dick
 from src.domain.entities.group import Group, GroupSettings
+from src.domain.entities.pending_event import PendingEvent
 from src.domain.entities.semen_balance import SemenBalance
 from src.domain.entities.user import User
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
@@ -88,6 +89,24 @@ class BattleRepository(Protocol):
     async def get(self, battle_id: int) -> Battle | None: ...
 
     async def update(self, battle: Battle) -> None: ...
+
+
+class PendingEventRepository(Protocol):
+    async def add(self, event: PendingEvent) -> PendingEvent: ...
+
+    async def get(self, event_id: int) -> PendingEvent | None: ...
+
+    async def list_ready(self, now: datetime) -> list[PendingEvent]: ...
+
+    async def update_payload(
+        self, event_id: int, payload: dict[str, object]
+    ) -> None: ...
+
+    async def set_message_id(
+        self, event_id: int, chat_message_id: int
+    ) -> None: ...
+
+    async def delete(self, event_id: int) -> None: ...
 
 
 class SemenBalanceRepository(Protocol):

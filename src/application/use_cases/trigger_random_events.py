@@ -6,10 +6,16 @@ from datetime import timedelta
 
 from src.application.ports.clock import Clock
 from src.application.ports.randomizer import Randomizer
-from src.application.ports.telegram_gateway import TelegramGateway
+from src.application.ports.telegram_gateway import BotAdmin, TelegramGateway
 from src.application.ports.unit_of_work import UnitOfWork
 from src.domain.entities.dick import Dick
 from src.domain.entities.group import Group
+from src.domain.entities.pending_event import (
+    BOT_BATTLE_TIMER_MINUTES,
+    ORGY_TIMER_MINUTES,
+    PendingEvent,
+    PendingEventKind,
+)
 from src.domain.entities.semen_balance import SemenBalance, SemenConfig
 from src.domain.services.battle_resolver import resolve as resolve_battle
 from src.domain.value_objects.random_event_kind import RandomEventKind
@@ -17,11 +23,27 @@ from src.domain.value_objects.telegram_ids import TelegramChatId
 
 log = logging.getLogger(__name__)
 
-# Interval between random events per chat is chosen uniformly from this range,
-# re-rolled after each fire. Hardcoded so admins can't grind the mechanic; the
-# only knob remaining in /settings is the on/off toggle.
 INTERVAL_MIN_HOURS = 12
 INTERVAL_MAX_HOURS = 24
+
+# Roughly-tuned weights so pending events (orgy, bot_battle) stay rare — the
+# bot battle in particular can only fire when another bot admin is around.
+_WEIGHTS: dict[RandomEventKind, int] = {
+    RandomEventKind.METEOR: 15,
+    RandomEventKind.RADIATION: 15,
+    RandomEventKind.SPONTANEOUS_BATTLE: 15,
+    RandomEventKind.HURRICANE: 15,
+    RandomEventKind.GIFT: 15,
+    RandomEventKind.VIAGRA: 10,
+    RandomEventKind.ICE_AGE: 10,
+    RandomEventKind.ROYAL_BATTLE: 5,
+    RandomEventKind.ORGY: 5,
+    RandomEventKind.BOT_BATTLE: 1,
+}
+_WEIGHTED_KINDS: list[RandomEventKind] = [
+    k for k, w in _WEIGHTS.items() for _ in range(w)
+]
+_MAX_PICK_ATTEMPTS = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,25 +52,21 @@ class _Notification:
     text: str
 
 
-ALL_KINDS: tuple[RandomEventKind, ...] = (
-    RandomEventKind.METEOR,
-    RandomEventKind.RADIATION,
-    RandomEventKind.SPONTANEOUS_BATTLE,
-    RandomEventKind.HURRICANE,
-    RandomEventKind.GIFT,
-    RandomEventKind.VIAGRA,
-    RandomEventKind.ICE_AGE,
-    RandomEventKind.ROYAL_BATTLE,
-)
+@dataclass(frozen=True, slots=True)
+class _EventOutcome:
+    fired: bool  # True → advance the timer
+    notify_text: str | None  # if set, post to chat after commit
+
+
+_SKIPPED = _EventOutcome(fired=False, notify_text=None)
+_HANDLED_INLINE = _EventOutcome(fired=True, notify_text=None)
+
+
+def _spoken(text: str) -> _EventOutcome:
+    return _EventOutcome(fired=True, notify_text=text)
 
 
 class TriggerRandomEventsCycleUseCase:
-    """
-    Periodic tick: for every group that's due, roll one event, apply mutations
-    transactionally, then fan out chat notifications after commit. Best-effort
-    delivery — a failed send doesn't roll back the effect.
-    """
-
     def __init__(
         self,
         uow: UnitOfWork,
@@ -66,6 +84,7 @@ class TriggerRandomEventsCycleUseCase:
     async def execute(self) -> int:
         now = self._clock.now()
         notifications: list[_Notification] = []
+        fired_count = 0
 
         async with self._uow as uow:
             groups = await uow.groups.list_with_random_events_ready(now)
@@ -74,18 +93,19 @@ class TriggerRandomEventsCycleUseCase:
                 if not dicks:
                     continue
 
-                kind = self._rng.choice(ALL_KINDS)
-                text = await self._apply(kind, group, dicks, uow, now)
-                if text is None:
-                    # event bailed (not enough eligible players etc.); don't
-                    # advance the timer so the next tick can try again soon
+                outcome = await self._roll_and_apply(group, dicks, uow, now)
+                if not outcome.fired:
                     continue
 
                 next_at = now + timedelta(
                     hours=self._rng.int_between(INTERVAL_MIN_HOURS, INTERVAL_MAX_HOURS)
                 )
                 await uow.groups.mark_random_event_fired(group.chat_id, next_at)
-                notifications.append(_Notification(group.chat_id, text))
+                fired_count += 1
+                if outcome.notify_text:
+                    notifications.append(
+                        _Notification(group.chat_id, outcome.notify_text)
+                    )
             await uow.commit()
 
         for n in notifications:
@@ -94,35 +114,48 @@ class TriggerRandomEventsCycleUseCase:
             except Exception:  # noqa: BLE001
                 log.warning("random-event notify failed for chat %s", n.chat_id)
 
-        return len(notifications)
+        return fired_count
 
-    async def _apply(
-        self,
-        kind: RandomEventKind,
-        group: Group,
-        dicks: list[Dick],
-        uow: UnitOfWork,
-        now,
-    ) -> str | None:
-        if kind is RandomEventKind.METEOR:
-            return await self._meteor(dicks, uow)
-        if kind is RandomEventKind.RADIATION:
-            return await self._radiation(dicks, uow)
-        if kind is RandomEventKind.SPONTANEOUS_BATTLE:
-            return await self._spontaneous_battle(dicks, uow)
-        if kind is RandomEventKind.HURRICANE:
-            return await self._hurricane(dicks, uow)
-        if kind is RandomEventKind.GIFT:
-            return await self._gift(dicks, uow)
-        if kind is RandomEventKind.VIAGRA:
-            return await self._viagra(dicks, uow, now)
-        if kind is RandomEventKind.ICE_AGE:
-            return await self._ice_age(dicks, uow)
-        if kind is RandomEventKind.ROYAL_BATTLE:
-            return await self._royal_battle(dicks, uow)
-        return None
+    async def _roll_and_apply(
+        self, group: Group, dicks: list[Dick], uow: UnitOfWork, now
+    ) -> _EventOutcome:
+        for _ in range(_MAX_PICK_ATTEMPTS):
+            kind = self._rng.choice(_WEIGHTED_KINDS)
+            if kind is RandomEventKind.METEOR:
+                return _spoken(await self._meteor(dicks, uow))
+            if kind is RandomEventKind.RADIATION:
+                return _spoken(await self._radiation(dicks, uow))
+            if kind is RandomEventKind.SPONTANEOUS_BATTLE:
+                text = await self._spontaneous_battle(dicks, uow)
+                if text is None:
+                    continue
+                return _spoken(text)
+            if kind is RandomEventKind.HURRICANE:
+                return _spoken(await self._hurricane(dicks, uow))
+            if kind is RandomEventKind.GIFT:
+                return _spoken(await self._gift(dicks, uow))
+            if kind is RandomEventKind.VIAGRA:
+                return _spoken(await self._viagra(dicks, uow, now))
+            if kind is RandomEventKind.ICE_AGE:
+                return _spoken(await self._ice_age(dicks, uow))
+            if kind is RandomEventKind.ROYAL_BATTLE:
+                text = await self._royal_battle(dicks, uow)
+                if text is None:
+                    continue
+                return _spoken(text)
+            if kind is RandomEventKind.ORGY:
+                ok = await self._create_orgy(group.chat_id, uow, now)
+                if not ok:
+                    continue
+                return _HANDLED_INLINE
+            if kind is RandomEventKind.BOT_BATTLE:
+                ok = await self._create_bot_battle(group.chat_id, uow, now)
+                if not ok:
+                    continue
+                return _HANDLED_INLINE
+        return _SKIPPED
 
-    # ------------------------------------------------------------ existing 3
+    # ------------------------------------------------------------ immediate
 
     async def _meteor(self, dicks: list[Dick], uow: UnitOfWork) -> str:
         target = self._rng.choice(dicks)
@@ -178,10 +211,7 @@ class TriggerRandomEventsCycleUseCase:
             f"Проигравший: <b>{loser.size.cm} см</b>"
         )
 
-    # ---------------------------------------------------------------- new 5
-
     async def _hurricane(self, dicks: list[Dick], uow: UnitOfWork) -> str:
-        """Half the players lose 1-3 cm each."""
         n_hit = max(1, len(dicks) // 2)
         victims = self._rng.sample(dicks, min(n_hit, len(dicks)))
         total_loss = 0
@@ -207,10 +237,7 @@ class TriggerRandomEventsCycleUseCase:
             f"<b>{target.size.cm} см</b>."
         )
 
-    async def _viagra(
-        self, dicks: list[Dick], uow: UnitOfWork, now
-    ) -> str:
-        """Refill everyone's semen to their current cap."""
+    async def _viagra(self, dicks: list[Dick], uow: UnitOfWork, now) -> str:
         cfg = self._semen_config
         for d in dicks:
             cap = cfg.cap_for(d.size.cm)
@@ -227,7 +254,6 @@ class TriggerRandomEventsCycleUseCase:
         )
 
     async def _ice_age(self, dicks: list[Dick], uow: UnitOfWork) -> str:
-        """Reset /grow cooldown for everyone."""
         reset = 0
         for d in dicks:
             if d.last_grow_at is not None:
@@ -244,7 +270,6 @@ class TriggerRandomEventsCycleUseCase:
     async def _royal_battle(
         self, dicks: list[Dick], uow: UnitOfWork
     ) -> str | None:
-        """4-player tournament: two semis, then a final."""
         eligible = [d for d in dicks if d.size.cm >= 5]
         if len(eligible) < 4:
             return None
@@ -255,7 +280,6 @@ class TriggerRandomEventsCycleUseCase:
         semi2_winner, semi2_loser = self._duel(c, d)
         champion, finalist = self._duel(semi1_winner, semi2_winner)
 
-        # rewards: champion +9, finalist +3, semi-losers -3
         champion.size = champion.size.apply(9)
         finalist.size = finalist.size.apply(3)
         semi1_loser.size = semi1_loser.size.apply(-3)
@@ -278,9 +302,93 @@ class TriggerRandomEventsCycleUseCase:
         outcome = resolve_battle(a.size.cm, b.size.cm, roll)
         return (a, b) if outcome.challenger_wins else (b, a)
 
+    # -------------------------------------------------------------- pending
+
+    async def _create_orgy(
+        self, chat_id: TelegramChatId, uow: UnitOfWork, now
+    ) -> bool:
+        resolves_at = now + timedelta(minutes=ORGY_TIMER_MINUTES)
+        pending = PendingEvent.new(
+            chat_id=chat_id,
+            kind=PendingEventKind.ORGY,
+            chat_message_id=0,
+            resolves_at=resolves_at,
+            now=now,
+            payload={"participants": []},
+        )
+        pending = await uow.pending_events.add(pending)
+        assert pending.id is not None
+
+        text = _orgy_announcement_text(ORGY_TIMER_MINUTES)
+        try:
+            message_id = await self._telegram.announce_orgy(
+                chat_id, text, pending.id
+            )
+        except Exception:  # noqa: BLE001
+            log.warning("orgy announcement failed for chat %s", chat_id)
+            return False
+        await uow.pending_events.set_message_id(pending.id, message_id)
+        return True
+
+    async def _create_bot_battle(
+        self, chat_id: TelegramChatId, uow: UnitOfWork, now
+    ) -> bool:
+        bots = await self._telegram.list_bot_admins(chat_id)
+        if not bots:
+            return False
+        opponent: BotAdmin = self._rng.choice(bots)
+        resolves_at = now + timedelta(minutes=BOT_BATTLE_TIMER_MINUTES)
+        label = opponent.username or opponent.full_name
+
+        payload = {
+            "opponent_bot_id": int(opponent.tg_id),
+            "opponent_bot_label": label,
+            "pipa_side": [],
+            "other_side": [],
+        }
+        pending = PendingEvent.new(
+            chat_id=chat_id,
+            kind=PendingEventKind.BOT_BATTLE,
+            chat_message_id=0,
+            resolves_at=resolves_at,
+            now=now,
+            payload=payload,
+        )
+        pending = await uow.pending_events.add(pending)
+        assert pending.id is not None
+
+        text = _bot_battle_announcement_text(BOT_BATTLE_TIMER_MINUTES, label)
+        try:
+            message_id = await self._telegram.announce_bot_battle(
+                chat_id, text, pending.id, label
+            )
+        except Exception:  # noqa: BLE001
+            log.warning("bot-battle announcement failed for chat %s", chat_id)
+            return False
+        await uow.pending_events.set_message_id(pending.id, message_id)
+        return True
+
+
+def _orgy_announcement_text(minutes_left: int) -> str:
+    return (
+        f"🎉 <b>Групповой секс!</b>\n"
+        f"Кто хочет — жми кнопку. Старт через <b>{minutes_left} мин</b>.\n"
+        f"Каждый участник потратит 10 мл спермы; кому хватит — получит +2 см."
+    )
+
+
+def _bot_battle_announcement_text(minutes_left: int, other_label: str) -> str:
+    return (
+        f"🤖 <b>Битва ботов!</b>\n"
+        f"<b>Pipagrad</b> vs <b>{other_label}</b>.\n"
+        f"Выбирай сторону — базовые силы 100/100, каждый игрок добавляет "
+        f"своим размером к своей стороне.\n"
+        f"Итог через <b>{minutes_left} мин</b>. Если Pipagrad побеждает — "
+        f"{other_label} вылетает из чата."
+    )
+
 
 async def _mention_by_user_id(uow: UnitOfWork, user_id: int) -> str:
-    """Format an HTML mention for a user we only have by internal id."""
     from html import escape
 
     user = await uow.users.get_by_id(user_id)

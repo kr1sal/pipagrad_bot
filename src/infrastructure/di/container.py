@@ -25,7 +25,14 @@ from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCas
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.get_user_global_stats import GetUserGlobalStatsUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
+from src.application.use_cases.join_pending import (
+    JoinBotBattleUseCase,
+    JoinOrgyUseCase,
+)
 from src.application.use_cases.perform_interaction import PerformInteractionUseCase
+from src.application.use_cases.resolve_pending_events import (
+    ResolvePendingEventsUseCase,
+)
 from src.application.use_cases.respond_to_battle import RespondToBattleUseCase
 from src.application.use_cases.toggle_my_preference import ToggleMyPreferenceUseCase
 from src.application.use_cases.trigger_random_events import (
@@ -168,6 +175,29 @@ class RequestProvider(Provider):
         return TriggerRandomEventsCycleUseCase(
             uow, clock, randomizer, telegram, semen_config
         )
+
+    @provide
+    def resolve_pending_events(
+        self,
+        uow: UnitOfWork,
+        clock: Clock,
+        randomizer: Randomizer,
+        telegram: TelegramGateway,
+        semen_config: SemenConfig,
+    ) -> ResolvePendingEventsUseCase:
+        return ResolvePendingEventsUseCase(
+            uow, clock, randomizer, telegram, semen_config
+        )
+
+    @provide
+    def join_orgy(self, uow: UnitOfWork, clock: Clock) -> JoinOrgyUseCase:
+        return JoinOrgyUseCase(uow, clock)
+
+    @provide
+    def join_bot_battle(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> JoinBotBattleUseCase:
+        return JoinBotBattleUseCase(uow, clock)
 
     @provide
     def get_global_top(self, uow: UnitOfWork) -> GetGlobalTopUseCase:
