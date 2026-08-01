@@ -18,3 +18,11 @@ class UserGlobalStats:
     chats_count: int
     total_cm: int
     max_cm: int
+
+
+@dataclass(frozen=True, slots=True)
+class MyChatBalance:
+    dick_size_cm: int
+    semen_current_ml: int
+    semen_cap_ml: int
+    regen_per_hour: int

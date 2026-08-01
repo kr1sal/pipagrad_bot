@@ -10,6 +10,7 @@ from src.application.dto.interaction import (
     GetMyPreferencesCommand,
     ToggleMyPreferenceCommand,
 )
+from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCase
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.toggle_my_preference import ToggleMyPreferenceUseCase
 from src.domain.value_objects.interaction_type import InteractionType
@@ -27,21 +28,25 @@ _GROUP_TYPES = {ChatType.GROUP, ChatType.SUPERGROUP}
 async def handle_me(
     message: Message,
     get_prefs: FromDishka[GetMyPreferencesUseCase],
+    get_balance: FromDishka[GetMyChatBalanceUseCase],
 ) -> None:
     if message.chat.type not in _GROUP_TYPES:
         await message.reply(texts.me_only_in_groups())
         return
     if message.from_user is None:
         return
+    tg_user_id = TelegramUserId(message.from_user.id)
+    chat_id = TelegramChatId(message.chat.id)
     prefs = await get_prefs.execute(
         GetMyPreferencesCommand(
-            tg_user_id=TelegramUserId(message.from_user.id),
+            tg_user_id=tg_user_id,
             tg_username=message.from_user.username,
-            chat_id=TelegramChatId(message.chat.id),
+            chat_id=chat_id,
         )
     )
+    balance = await get_balance.execute(tg_user_id, chat_id)
     await message.reply(
-        texts.me_header(),
+        texts.me_header(balance),
         reply_markup=build_kb(prefs),
     )
 

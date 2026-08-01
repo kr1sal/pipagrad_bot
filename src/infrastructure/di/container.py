@@ -21,6 +21,7 @@ from src.application.use_cases.ensure_group_registered import (
 )
 from src.application.use_cases.get_global_top import GetGlobalTopUseCase
 from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
+from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCase
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.get_user_global_stats import GetUserGlobalStatsUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
@@ -172,6 +173,12 @@ class RequestProvider(Provider):
     @provide
     def get_user_global_stats(self, uow: UnitOfWork) -> GetUserGlobalStatsUseCase:
         return GetUserGlobalStatsUseCase(uow)
+
+    @provide
+    def get_my_chat_balance(
+        self, uow: UnitOfWork, clock: Clock, semen_config: SemenConfig
+    ) -> GetMyChatBalanceUseCase:
+        return GetMyChatBalanceUseCase(uow, clock, semen_config)
 
 
 def build_container(settings: Settings, bot: Bot):

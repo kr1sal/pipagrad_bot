@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from html import escape
 
-from src.application.dto.stats import UserGlobalStats
+from src.application.dto.stats import MyChatBalance, TopEntry, UserGlobalStats
 from src.domain.services.interaction_policy import Denial
 from src.domain.value_objects.interaction_type import InteractionType
 
@@ -119,10 +119,14 @@ def me_only_in_groups() -> str:
     return "Настройки взаимодействий работают в контексте группы. Позови меня в неё."
 
 
-def me_header() -> str:
+def me_header(balance: MyChatBalance) -> str:
     return (
-        "<b>Что со мной можно делать в этом чате</b>\n"
-        "Если галочка стоит — разрешено. Настройки группы имеют приоритет."
+        "<b>Мой профиль в этом чате</b>\n"
+        f"🍆 Писюнчик: <b>{balance.dick_size_cm} см</b>\n"
+        f"💦 Сперма: <b>{balance.semen_current_ml}/{balance.semen_cap_ml} мл</b> "
+        f"(+{balance.regen_per_hour} мл/час)\n\n"
+        "<b>Что со мной можно делать</b>\n"
+        "Тумблеры ниже — разрешения для других. Настройки группы имеют приоритет."
     )
 
 
@@ -218,4 +222,49 @@ def inline_card_message(user_mention: str, stats: UserGlobalStats | None) -> str
         f"🍆 <b>Писюнчик {user_mention}</b>\n"
         f"Максимум: <b>{stats.max_cm} см</b>\n"
         f"Всего: <b>{stats.total_cm} см</b> в {stats.chats_count} чат(-ах)"
+    )
+
+
+def inline_top_title() -> str:
+    return "🏆 Глобальный топ 10"
+
+
+def inline_top_description(top: list[TopEntry]) -> str:
+    if not top:
+        return "Пока пусто — никто не растил."
+    leader = top[0]
+    label = leader.username or f"id{leader.tg_id}"
+    return f"Лидер: @{label} — {leader.size_cm} см"
+
+
+def inline_top_message(top: list[TopEntry]) -> str:
+    if not top:
+        return top_empty()
+    lines = [top_header()]
+    for e in top:
+        lines.append(
+            top_line(rank=e.rank, mention=mention(e.username, int(e.tg_id)), size_cm=e.size_cm)
+        )
+    return "\n".join(lines)
+
+
+def inline_help_title() -> str:
+    return "ℹ️ Как играть"
+
+
+def inline_help_description() -> str:
+    return "Список команд и что они делают"
+
+
+def inline_help_message() -> str:
+    return (
+        "<b>Pipagrad</b> — как играть 🍆\n\n"
+        "• /grow — вырастить писюнчик (раз в сутки)\n"
+        "• /pet | /kiss | /fuck — reply на сообщение\n"
+        "• /battle [ставка] — вызов на битву (reply)\n"
+        "• /top — глобальный топ\n"
+        "• /me — мой профиль в этом чате\n"
+        "• /settings — настройки чата (только админы)\n\n"
+        "Сперма копится со временем и тратится при /fuck. "
+        "Максимум растёт вместе с размером писюнчика."
     )
