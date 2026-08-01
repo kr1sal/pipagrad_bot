@@ -64,6 +64,7 @@ class GroupModel(Base):
     allow_pet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_kiss: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_fuck: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    allow_hug: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     next_random_event_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -140,3 +141,4 @@ class UserPreferencesModel(Base):
     allow_pet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_kiss: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_fuck: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    allow_hug: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

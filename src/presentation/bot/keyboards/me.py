@@ -21,6 +21,7 @@ def build(prefs: UserPreferences) -> InlineKeyboardMarkup:
     for kind, label in (
         (InteractionType.PET, "гладить"),
         (InteractionType.KISS, "целовать"),
+        (InteractionType.HUG, "обнимать"),
         (InteractionType.FUCK, "трахать"),
     ):
         kb.button(

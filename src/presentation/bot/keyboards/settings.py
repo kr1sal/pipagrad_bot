@@ -32,13 +32,14 @@ def build(settings: GroupSettings) -> InlineKeyboardMarkup:
         callback_data=SettingsCB(action="tb").pack(),
     )
     kb.button(
-        text=f"{_flag(settings.random_events_enabled)} Случайные события (12–24ч)",
+        text=f"{_flag(settings.random_events_enabled)} Случ. события (12-24ч)",
         callback_data=SettingsCB(action="tre").pack(),
     )
 
     for kind, label in (
         (InteractionType.PET, "гладить"),
         (InteractionType.KISS, "целовать"),
+        (InteractionType.HUG, "обнимать"),
         (InteractionType.FUCK, "трахать"),
     ):
         allowed = kind in settings.allowed_interactions

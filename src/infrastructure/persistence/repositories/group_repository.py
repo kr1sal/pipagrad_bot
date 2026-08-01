@@ -31,6 +31,7 @@ class SqlAlchemyGroupRepository:
             allow_pet=InteractionType.PET in group.settings.allowed_interactions,
             allow_kiss=InteractionType.KISS in group.settings.allowed_interactions,
             allow_fuck=InteractionType.FUCK in group.settings.allowed_interactions,
+            allow_hug=InteractionType.HUG in group.settings.allowed_interactions,
             next_random_event_at=group.next_random_event_at,
         )
         self._session.add(model)
@@ -49,6 +50,7 @@ class SqlAlchemyGroupRepository:
                 allow_pet=InteractionType.PET in settings.allowed_interactions,
                 allow_kiss=InteractionType.KISS in settings.allowed_interactions,
                 allow_fuck=InteractionType.FUCK in settings.allowed_interactions,
+                allow_hug=InteractionType.HUG in settings.allowed_interactions,
             )
         )
         await self._session.execute(stmt)
@@ -88,6 +90,8 @@ def _to_entity(model: GroupModel) -> Group:
         allowed.add(InteractionType.KISS)
     if model.allow_fuck:
         allowed.add(InteractionType.FUCK)
+    if model.allow_hug:
+        allowed.add(InteractionType.HUG)
 
     return Group(
         chat_id=TelegramChatId(model.chat_id),

@@ -18,9 +18,10 @@ _UNIVERSAL: tuple[BotCommand, ...] = (
 # Commands that only work in groups. They need reply/target/chat context.
 _GROUP_ONLY: tuple[BotCommand, ...] = (
     BotCommand(command="me", description="Мои разрешения в этом чате"),
-    BotCommand(command="pet", description="Погладить (reply на сообщение)"),
-    BotCommand(command="kiss", description="Поцеловать (reply на сообщение)"),
-    BotCommand(command="fuck", description="Трахнуть (reply на сообщение)"),
+    BotCommand(command="pet", description="Погладить (reply или @username)"),
+    BotCommand(command="kiss", description="Поцеловать (reply или @username)"),
+    BotCommand(command="hug", description="Обнять (reply или @username)"),
+    BotCommand(command="fuck", description="Трахнуть (reply или @username)"),
     BotCommand(command="battle", description="Битва: /battle [ставка] (reply)"),
     BotCommand(command="settings", description="Настройки чата (только админы)"),
 )

@@ -117,6 +117,7 @@ def _action_results(
         for kind in (
             InteractionType.PET,
             InteractionType.KISS,
+            InteractionType.HUG,
             InteractionType.FUCK,
         )
     ]

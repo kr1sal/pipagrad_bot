@@ -36,6 +36,7 @@ class SqlAlchemyUserPreferencesRepository:
             "allow_pet": InteractionType.PET in prefs.allowed,
             "allow_kiss": InteractionType.KISS in prefs.allowed,
             "allow_fuck": InteractionType.FUCK in prefs.allowed,
+            "allow_hug": InteractionType.HUG in prefs.allowed,
         }
         stmt = pg_insert(UserPreferencesModel).values(**values)
         stmt = stmt.on_conflict_do_update(
@@ -44,6 +45,7 @@ class SqlAlchemyUserPreferencesRepository:
                 "allow_pet": stmt.excluded.allow_pet,
                 "allow_kiss": stmt.excluded.allow_kiss,
                 "allow_fuck": stmt.excluded.allow_fuck,
+                "allow_hug": stmt.excluded.allow_hug,
             },
         )
         await self._session.execute(stmt)
@@ -57,4 +59,6 @@ def _to_vo(model: UserPreferencesModel) -> UserPreferences:
         allowed.add(InteractionType.KISS)
     if model.allow_fuck:
         allowed.add(InteractionType.FUCK)
+    if model.allow_hug:
+        allowed.add(InteractionType.HUG)
     return UserPreferences(allowed=frozenset(allowed))

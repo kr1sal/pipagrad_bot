@@ -11,12 +11,14 @@ _VERB_PAST: dict[InteractionType, str] = {
     InteractionType.PET: "погладил",
     InteractionType.KISS: "поцеловал",
     InteractionType.FUCK: "трахнул",
+    InteractionType.HUG: "обнял",
 }
 
 _VERB_NOUN: dict[InteractionType, str] = {
     InteractionType.PET: "гладить",
     InteractionType.KISS: "целовать",
     InteractionType.FUCK: "трахать",
+    InteractionType.HUG: "обнимать",
 }
 
 
@@ -30,12 +32,13 @@ def start() -> str:
         "Добро пожаловать в <b>Pipagrad</b> 🍆\n\n"
         "Основные команды:\n"
         "• /grow — вырастить писюнчик (раз в сутки)\n"
-        "• /pet | /kiss | /fuck — reply на сообщение\n"
+        "• /pet | /kiss | /hug | /fuck — reply <b>или</b> <code>@username</code>\n"
         "• /battle [ставка] — вызов на битву (reply)\n"
-        "• /top — топ 10 в этом чате\n"
-        "• /me — что со мной можно делать в этом чате\n"
-        "• /settings — настройки чата (только для админов)\n\n"
-        "Ещё умею inline: набери <code>@pipagrad_bot</code> в любом чате."
+        "• /top — глобальный топ\n"
+        "• /me — мой профиль в этом чате\n"
+        "• /settings — настройки чата (только админы)\n\n"
+        "Ещё умею inline: набери <code>@pipagrad_bot</code> в любом чате "
+        "или <code>@pipagrad_bot @username</code> чтобы взаимодействовать."
     )
 
 
@@ -74,8 +77,19 @@ def settings_not_admin() -> str:
     return "🚫 Только админы группы могут менять настройки."
 
 
-def interaction_needs_reply(kind: InteractionType) -> str:
-    return f"Ответь на сообщение того, кого хочешь {_VERB_NOUN[kind]}."
+def interaction_needs_target(kind: InteractionType) -> str:
+    verb = _VERB_NOUN[kind]
+    return (
+        f"Кого {verb}? Либо ответь на его сообщение, либо укажи "
+        f"<code>/{kind.value} @username</code>."
+    )
+
+
+def interaction_user_not_found(username: str) -> str:
+    return (
+        f"Не знаю @{username} — он должен хотя бы раз нажать /start "
+        f"у @pipagrad_bot."
+    )
 
 
 def interaction_self() -> str:
@@ -339,6 +353,7 @@ def inline_action_title(kind: InteractionType, target_username: str) -> str:
     verb_map = {
         InteractionType.PET: "🥰 Погладить",
         InteractionType.KISS: "💋 Поцеловать",
+        InteractionType.HUG: "🤗 Обнять",
         InteractionType.FUCK: "🍆 Трахнуть",
     }
     return f"{verb_map[kind]} @{target_username}"
@@ -348,6 +363,7 @@ def inline_action_description(kind: InteractionType) -> str:
     return {
         InteractionType.PET: "Отправить в чат «погладил»",
         InteractionType.KISS: "Отправить в чат «поцеловал»",
+        InteractionType.HUG: "Отправить в чат «обнял»",
         InteractionType.FUCK: "Отправить в чат «трахнул»",
     }[kind]
 
@@ -355,12 +371,7 @@ def inline_action_description(kind: InteractionType) -> str:
 def inline_action_message(
     kind: InteractionType, actor_mention: str, target_mention: str
 ) -> str:
-    verb_map = {
-        InteractionType.PET: "погладил",
-        InteractionType.KISS: "поцеловал",
-        InteractionType.FUCK: "трахнул",
-    }
-    return f"{actor_mention} {verb_map[kind]} {target_mention} 💫"
+    return f"{actor_mention} {_VERB_PAST[kind]} {target_mention} 💫"
 
 
 def inline_no_such_user_title(username: str) -> str:
