@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
+
 from aiogram import Router
 from aiogram.types import (
+    ChosenInlineResult,
     InlineQuery,
     InlineQueryResultArticle,
     InputTextMessageContent,
@@ -9,6 +12,10 @@ from aiogram.types import (
 )
 from dishka.integrations.aiogram import FromDishka, inject
 
+from src.application.dto.interaction import (
+    InteractionDenied,
+    PerformInteractionCommand,
+)
 from src.application.dto.stats import TopEntry, UserGlobalStats
 from src.application.use_cases.find_user_by_username import (
     FindUserByUsernameUseCase,
@@ -16,9 +23,19 @@ from src.application.use_cases.find_user_by_username import (
 )
 from src.application.use_cases.get_global_top import GetGlobalTopUseCase
 from src.application.use_cases.get_user_global_stats import GetUserGlobalStatsUseCase
+from src.application.use_cases.perform_interaction import PerformInteractionUseCase
+from src.domain.exceptions import SelfInteraction
 from src.domain.value_objects.interaction_type import InteractionType
-from src.domain.value_objects.telegram_ids import TelegramUserId
+from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 from src.presentation.bot.texts import ru as texts
+
+log = logging.getLogger(__name__)
+
+# Sentinel chat_id for user-to-user interactions triggered from inline mode.
+# Real Telegram chat ids are never 0 (private > 0, groups < 0), so this can't
+# clash with a live chat. All inline interactions share this one virtual chat,
+# so semen/dick state accumulated via inline is separate from any real group.
+DIRECT_CHAT_ID = TelegramChatId(0)
 
 router = Router(name="inline")
 
@@ -162,3 +179,76 @@ def _help_result() -> InlineQueryResultArticle:
             parse_mode="HTML",
         ),
     )
+
+
+# ---------------------------------------------------------------- mutation
+
+# Result ids for action articles: "{kind}-{actor_id}-{target_tg_id}".
+# Non-action results (card / top / help) don't match this shape and are ignored.
+_ACTION_KINDS = {k.value for k in InteractionType}
+
+
+@router.chosen_inline_result()
+@inject
+async def on_chosen_action(
+    chosen: ChosenInlineResult,
+    perform: FromDishka[PerformInteractionUseCase],
+) -> None:
+    """
+    Fires when the user actually picks an inline article — this is our only
+    signal that an action happened, because the message that gets posted has
+    no chat_id and no callback (there was no accept flow to hook into).
+    Applies the interaction against a sentinel chat so semen is actually
+    spent, even though the visible message was already sent.
+
+    Requires @BotFather → /setinlinefeedback → Enabled, otherwise Telegram
+    doesn't dispatch this update.
+    """
+    parsed = _parse_action_id(chosen.result_id)
+    if parsed is None:
+        return  # a non-action article (card / top / help) — nothing to apply
+    kind, actor_tg_id, target_tg_id = parsed
+    if int(chosen.from_user.id) != actor_tg_id:
+        # someone forged/replayed a result_id — ignore
+        return
+
+    try:
+        result = await perform.execute(
+            PerformInteractionCommand(
+                chat_id=DIRECT_CHAT_ID,
+                actor_tg_id=TelegramUserId(actor_tg_id),
+                actor_username=chosen.from_user.username,
+                target_tg_id=TelegramUserId(target_tg_id),
+                target_username=None,  # target isn't in this event; already saved
+                kind=kind,
+            )
+        )
+    except SelfInteraction:
+        return
+
+    if isinstance(result, InteractionDenied):
+        # Message already went out; without an inline_message_id (no reply_markup
+        # on the article) we can't edit it, so denial is best-effort logged.
+        log.info(
+            "inline action denied: kind=%s actor=%s target=%s reason=%s "
+            "current_ml=%s cost_ml=%s",
+            kind.value, actor_tg_id, target_tg_id, result.reason.value,
+            result.current_ml, result.cost_ml,
+        )
+
+
+def _parse_action_id(
+    result_id: str,
+) -> tuple[InteractionType, int, int] | None:
+    parts = result_id.split("-")
+    if len(parts) != 3:
+        return None
+    kind_str, actor_str, target_str = parts
+    if kind_str not in _ACTION_KINDS:
+        return None
+    try:
+        actor_id = int(actor_str)
+        target_id = int(target_str)
+    except ValueError:
+        return None
+    return InteractionType(kind_str), actor_id, target_id
