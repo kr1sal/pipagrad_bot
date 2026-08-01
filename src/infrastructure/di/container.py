@@ -19,6 +19,9 @@ from src.application.use_cases.challenge_battle import ChallengeBattleUseCase
 from src.application.use_cases.ensure_group_registered import (
     EnsureGroupRegisteredUseCase,
 )
+from src.application.use_cases.find_user_by_username import (
+    FindUserByUsernameUseCase,
+)
 from src.application.use_cases.get_global_top import GetGlobalTopUseCase
 from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
 from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCase
@@ -206,6 +209,12 @@ class RequestProvider(Provider):
     @provide
     def get_user_global_stats(self, uow: UnitOfWork) -> GetUserGlobalStatsUseCase:
         return GetUserGlobalStatsUseCase(uow)
+
+    @provide
+    def find_user_by_username(
+        self, uow: UnitOfWork
+    ) -> FindUserByUsernameUseCase:
+        return FindUserByUsernameUseCase(uow)
 
     @provide
     def get_my_chat_balance(

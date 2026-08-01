@@ -18,6 +18,10 @@ class UserRepository(Protocol):
 
     async def get_by_id(self, user_id: int) -> User | None: ...
 
+    async def get_by_username(self, username: str) -> User | None:
+        """Case-insensitive lookup — Telegram usernames are case-insensitive."""
+        ...
+
     async def add(self, user: User) -> User:
         """Persist a new user and return it with the assigned id."""
         ...

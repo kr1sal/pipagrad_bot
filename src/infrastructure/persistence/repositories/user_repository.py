@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.user import User
@@ -19,6 +19,13 @@ class SqlAlchemyUserRepository:
 
     async def get_by_id(self, user_id: int) -> User | None:
         row = await self._session.get(UserModel, user_id)
+        return _to_entity(row) if row else None
+
+    async def get_by_username(self, username: str) -> User | None:
+        stmt = select(UserModel).where(
+            func.lower(UserModel.username) == username.lower()
+        )
+        row = await self._session.scalar(stmt)
         return _to_entity(row) if row else None
 
     async def add(self, user: User) -> User:

@@ -335,6 +335,49 @@ def pending_not_found() -> str:
     return "Это событие уже завершилось."
 
 
+def inline_action_title(kind: InteractionType, target_username: str) -> str:
+    verb_map = {
+        InteractionType.PET: "🥰 Погладить",
+        InteractionType.KISS: "💋 Поцеловать",
+        InteractionType.FUCK: "🍆 Трахнуть",
+    }
+    return f"{verb_map[kind]} @{target_username}"
+
+
+def inline_action_description(kind: InteractionType) -> str:
+    return {
+        InteractionType.PET: "Отправить в чат «погладил»",
+        InteractionType.KISS: "Отправить в чат «поцеловал»",
+        InteractionType.FUCK: "Отправить в чат «трахнул»",
+    }[kind]
+
+
+def inline_action_message(
+    kind: InteractionType, actor_mention: str, target_mention: str
+) -> str:
+    verb_map = {
+        InteractionType.PET: "погладил",
+        InteractionType.KISS: "поцеловал",
+        InteractionType.FUCK: "трахнул",
+    }
+    return f"{actor_mention} {verb_map[kind]} {target_mention} 💫"
+
+
+def inline_no_such_user_title(username: str) -> str:
+    return f"❌ @{username} ещё не играет"
+
+
+def inline_no_such_user_description() -> str:
+    return "Он должен хотя бы раз нажать /start у бота."
+
+
+def inline_no_such_user_message(username: str) -> str:
+    return (
+        f"Я не знаю @{username} — попроси его нажать /start "
+        f"в @pipagrad_bot, и он появится."
+    )
+
+
 def inline_help_message() -> str:
     return (
         "<b>Pipagrad</b> — как играть 🍆\n\n"
