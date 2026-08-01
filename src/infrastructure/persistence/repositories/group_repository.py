@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.group import Group, GroupSettings
@@ -28,11 +28,10 @@ class SqlAlchemyGroupRepository:
             created_at=group.created_at,
             battles_enabled=group.settings.battles_enabled,
             random_events_enabled=group.settings.random_events_enabled,
-            random_event_interval_minutes=group.settings.random_event_interval_minutes,
             allow_pet=InteractionType.PET in group.settings.allowed_interactions,
             allow_kiss=InteractionType.KISS in group.settings.allowed_interactions,
             allow_fuck=InteractionType.FUCK in group.settings.allowed_interactions,
-            last_random_event_at=group.last_random_event_at,
+            next_random_event_at=group.next_random_event_at,
         )
         self._session.add(model)
         await self._session.flush()
@@ -47,7 +46,6 @@ class SqlAlchemyGroupRepository:
             .values(
                 battles_enabled=settings.battles_enabled,
                 random_events_enabled=settings.random_events_enabled,
-                random_event_interval_minutes=settings.random_event_interval_minutes,
                 allow_pet=InteractionType.PET in settings.allowed_interactions,
                 allow_kiss=InteractionType.KISS in settings.allowed_interactions,
                 allow_fuck=InteractionType.FUCK in settings.allowed_interactions,
@@ -57,29 +55,27 @@ class SqlAlchemyGroupRepository:
 
     async def list_with_random_events_ready(self, now: datetime) -> list[Group]:
         """
-        Return groups where random events are enabled AND either never fired or
-        the interval has elapsed. Filter in Python — the group set is small at
-        current scale, and interval-arithmetic in SQL is fiddly across dialects.
+        Return groups where random events are enabled AND next_random_event_at
+        is either NULL (never fired — treat as immediately ready) or already
+        in the past.
         """
-        stmt = select(GroupModel).where(GroupModel.random_events_enabled.is_(True))
+        stmt = select(GroupModel).where(
+            GroupModel.random_events_enabled.is_(True),
+            or_(
+                GroupModel.next_random_event_at.is_(None),
+                GroupModel.next_random_event_at <= now,
+            ),
+        )
         rows = (await self._session.scalars(stmt)).all()
-        ready: list[Group] = []
-        for m in rows:
-            if m.last_random_event_at is None:
-                ready.append(_to_entity(m))
-                continue
-            elapsed = now - m.last_random_event_at
-            if elapsed >= timedelta(minutes=m.random_event_interval_minutes):
-                ready.append(_to_entity(m))
-        return ready
+        return [_to_entity(m) for m in rows]
 
     async def mark_random_event_fired(
-        self, chat_id: TelegramChatId, now: datetime
+        self, chat_id: TelegramChatId, next_at: datetime
     ) -> None:
         stmt = (
             update(GroupModel)
             .where(GroupModel.chat_id == int(chat_id))
-            .values(last_random_event_at=now)
+            .values(next_random_event_at=next_at)
         )
         await self._session.execute(stmt)
 
@@ -105,8 +101,7 @@ def _to_entity(model: GroupModel) -> Group:
         settings=GroupSettings(
             battles_enabled=model.battles_enabled,
             random_events_enabled=model.random_events_enabled,
-            random_event_interval_minutes=model.random_event_interval_minutes,
             allowed_interactions=frozenset(allowed),
         ),
-        last_random_event_at=model.last_random_event_at,
+        next_random_event_at=model.next_random_event_at,
     )

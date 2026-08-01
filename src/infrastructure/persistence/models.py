@@ -58,13 +58,10 @@ class GroupModel(Base):
     random_events_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
-    random_event_interval_minutes: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=60
-    )
     allow_pet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_kiss: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allow_fuck: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    last_random_event_at: Mapped[datetime | None] = mapped_column(
+    next_random_event_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 

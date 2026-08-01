@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from src.application.dto.group_settings import (
-    SetRandomEventInterval,
     ToggleBattles,
     ToggleInteraction,
     ToggleRandomEvents,
@@ -58,7 +57,5 @@ def _apply(settings: GroupSettings, command: UpdateGroupSettingsCommand) -> Grou
             return settings.toggled_random_events()
         case ToggleInteraction(kind=kind):
             return settings.toggled_interaction(kind)
-        case SetRandomEventInterval(minutes=m):
-            return settings.with_random_event_interval(m)
         case _:  # pragma: no cover
             raise TypeError(f"Unknown settings change: {change!r}")

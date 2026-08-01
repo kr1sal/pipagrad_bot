@@ -7,7 +7,6 @@ from aiogram.types import CallbackQuery, Message
 from dishka.integrations.aiogram import FromDishka, inject
 
 from src.application.dto.group_settings import (
-    SetRandomEventInterval,
     SettingsChange,
     ToggleBattles,
     ToggleInteraction,
@@ -76,21 +75,6 @@ async def cb_toggle_interaction(
         return
     kind = InteractionType(callback_data.kind)
     await _apply(query, ToggleInteraction(kind=kind), update_settings)
-
-
-@router.callback_query(SettingsCB.filter(F.action == "sri"))
-@inject
-async def cb_set_interval(
-    query: CallbackQuery,
-    callback_data: SettingsCB,
-    update_settings: FromDishka[UpdateGroupSettingsUseCase],
-) -> None:
-    if callback_data.value is None:
-        await query.answer()
-        return
-    await _apply(
-        query, SetRandomEventInterval(minutes=callback_data.value), update_settings
-    )
 
 
 async def _apply(

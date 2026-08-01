@@ -63,8 +63,10 @@ class GroupRepository(Protocol):
     ) -> list[Group]: ...
 
     async def mark_random_event_fired(
-        self, chat_id: TelegramChatId, now: datetime
-    ) -> None: ...
+        self, chat_id: TelegramChatId, next_at: datetime
+    ) -> None:
+        """Set the next-fire time for random events; earlier ones become eligible."""
+        ...
 
 
 class UserPreferencesRepository(Protocol):

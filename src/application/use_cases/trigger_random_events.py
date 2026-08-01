@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import timedelta
 
 from src.application.ports.clock import Clock
 from src.application.ports.randomizer import Randomizer
@@ -9,11 +10,18 @@ from src.application.ports.telegram_gateway import TelegramGateway
 from src.application.ports.unit_of_work import UnitOfWork
 from src.domain.entities.dick import Dick
 from src.domain.entities.group import Group
+from src.domain.entities.semen_balance import SemenBalance, SemenConfig
 from src.domain.services.battle_resolver import resolve as resolve_battle
 from src.domain.value_objects.random_event_kind import RandomEventKind
 from src.domain.value_objects.telegram_ids import TelegramChatId
 
 log = logging.getLogger(__name__)
+
+# Interval between random events per chat is chosen uniformly from this range,
+# re-rolled after each fire. Hardcoded so admins can't grind the mechanic; the
+# only knob remaining in /settings is the on/off toggle.
+INTERVAL_MIN_HOURS = 12
+INTERVAL_MAX_HOURS = 24
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,14 +34,19 @@ ALL_KINDS: tuple[RandomEventKind, ...] = (
     RandomEventKind.METEOR,
     RandomEventKind.RADIATION,
     RandomEventKind.SPONTANEOUS_BATTLE,
+    RandomEventKind.HURRICANE,
+    RandomEventKind.GIFT,
+    RandomEventKind.VIAGRA,
+    RandomEventKind.ICE_AGE,
+    RandomEventKind.ROYAL_BATTLE,
 )
 
 
 class TriggerRandomEventsCycleUseCase:
     """
-    Periodic tick: pick every group whose interval has elapsed, roll one event,
-    apply mutations transactionally, then fan out chat notifications after commit.
-    Notifications are best-effort — a failed send doesn't roll back the effect.
+    Periodic tick: for every group that's due, roll one event, apply mutations
+    transactionally, then fan out chat notifications after commit. Best-effort
+    delivery — a failed send doesn't roll back the effect.
     """
 
     def __init__(
@@ -42,14 +55,15 @@ class TriggerRandomEventsCycleUseCase:
         clock: Clock,
         randomizer: Randomizer,
         telegram: TelegramGateway,
+        semen_config: SemenConfig,
     ) -> None:
         self._uow = uow
         self._clock = clock
         self._rng = randomizer
         self._telegram = telegram
+        self._semen_config = semen_config
 
     async def execute(self) -> int:
-        """Returns the number of events fired this cycle."""
         now = self._clock.now()
         notifications: list[_Notification] = []
 
@@ -61,14 +75,16 @@ class TriggerRandomEventsCycleUseCase:
                     continue
 
                 kind = self._rng.choice(ALL_KINDS)
-                text = await self._apply(kind, group, dicks, uow)
+                text = await self._apply(kind, group, dicks, uow, now)
                 if text is None:
-                    # event could not be applied (e.g. spontaneous battle
-                    # without two eligible players); skip without marking so
-                    # the next tick re-tries a different event
+                    # event bailed (not enough eligible players etc.); don't
+                    # advance the timer so the next tick can try again soon
                     continue
 
-                await uow.groups.mark_random_event_fired(group.chat_id, now)
+                next_at = now + timedelta(
+                    hours=self._rng.int_between(INTERVAL_MIN_HOURS, INTERVAL_MAX_HOURS)
+                )
+                await uow.groups.mark_random_event_fired(group.chat_id, next_at)
                 notifications.append(_Notification(group.chat_id, text))
             await uow.commit()
 
@@ -86,6 +102,7 @@ class TriggerRandomEventsCycleUseCase:
         group: Group,
         dicks: list[Dick],
         uow: UnitOfWork,
+        now,
     ) -> str | None:
         if kind is RandomEventKind.METEOR:
             return await self._meteor(dicks, uow)
@@ -93,7 +110,19 @@ class TriggerRandomEventsCycleUseCase:
             return await self._radiation(dicks, uow)
         if kind is RandomEventKind.SPONTANEOUS_BATTLE:
             return await self._spontaneous_battle(dicks, uow)
+        if kind is RandomEventKind.HURRICANE:
+            return await self._hurricane(dicks, uow)
+        if kind is RandomEventKind.GIFT:
+            return await self._gift(dicks, uow)
+        if kind is RandomEventKind.VIAGRA:
+            return await self._viagra(dicks, uow, now)
+        if kind is RandomEventKind.ICE_AGE:
+            return await self._ice_age(dicks, uow)
+        if kind is RandomEventKind.ROYAL_BATTLE:
+            return await self._royal_battle(dicks, uow)
         return None
+
+    # ------------------------------------------------------------ existing 3
 
     async def _meteor(self, dicks: list[Dick], uow: UnitOfWork) -> str:
         target = self._rng.choice(dicks)
@@ -140,11 +169,8 @@ class TriggerRandomEventsCycleUseCase:
         await uow.dicks.update(winner)
         await uow.dicks.update(loser)
 
-        winner_user = await uow.users.get_by_id(winner.user_id)
-        loser_user = await uow.users.get_by_id(loser.user_id)
-        assert winner_user is not None and loser_user is not None
-        winner_ref = _user_ref(winner_user.username, int(winner_user.tg_id))
-        loser_ref = _user_ref(loser_user.username, int(loser_user.tg_id))
+        winner_ref = await _mention_by_user_id(uow, winner.user_id)
+        loser_ref = await _mention_by_user_id(uow, loser.user_id)
         return (
             f"⚔️ <b>Внезапная битва!</b>\n"
             f"{winner_ref} побеждает {loser_ref} и забирает {stake} см.\n"
@@ -152,11 +178,114 @@ class TriggerRandomEventsCycleUseCase:
             f"Проигравший: <b>{loser.size.cm} см</b>"
         )
 
+    # ---------------------------------------------------------------- new 5
 
-def _user_ref(username: str | None, tg_id: int) -> str:
+    async def _hurricane(self, dicks: list[Dick], uow: UnitOfWork) -> str:
+        """Half the players lose 1-3 cm each."""
+        n_hit = max(1, len(dicks) // 2)
+        victims = self._rng.sample(dicks, min(n_hit, len(dicks)))
+        total_loss = 0
+        for d in victims:
+            loss = self._rng.int_between(1, 3)
+            d.size = d.size.apply(-loss)
+            total_loss += loss
+            await uow.dicks.update(d)
+        return (
+            f"🌪 <b>Ураган</b> сметает половину чата!\n"
+            f"Пострадало: {len(victims)} игрок(-ов), суммарно −{total_loss} см."
+        )
+
+    async def _gift(self, dicks: list[Dick], uow: UnitOfWork) -> str:
+        target = self._rng.choice(dicks)
+        bonus = self._rng.int_between(5, 15)
+        target.size = target.size.apply(bonus)
+        await uow.dicks.update(target)
+        ref = await _mention_by_user_id(uow, target.user_id)
+        return (
+            f"🎁 <b>Подарок с небес!</b>\n"
+            f"{ref} получает <b>+{bonus} см</b>. Новый размер: "
+            f"<b>{target.size.cm} см</b>."
+        )
+
+    async def _viagra(
+        self, dicks: list[Dick], uow: UnitOfWork, now
+    ) -> str:
+        """Refill everyone's semen to their current cap."""
+        cfg = self._semen_config
+        for d in dicks:
+            cap = cfg.cap_for(d.size.cm)
+            balance = await uow.semen.get(d.user_id, d.chat_id)
+            if balance is None:
+                balance = SemenBalance.initial(d.user_id, d.chat_id, cap, now)
+            else:
+                balance.stored_ml = cap
+                balance.updated_at = now
+            await uow.semen.upsert(balance)
+        return (
+            f"💊 <b>Виагра!</b>\n"
+            f"У всех {len(dicks)} игрок(-ов) сперма мгновенно до максимума."
+        )
+
+    async def _ice_age(self, dicks: list[Dick], uow: UnitOfWork) -> str:
+        """Reset /grow cooldown for everyone."""
+        reset = 0
+        for d in dicks:
+            if d.last_grow_at is not None:
+                d.last_grow_at = None
+                await uow.dicks.update(d)
+                reset += 1
+        if reset == 0:
+            return "🥶 <b>Заморозка</b> прошла впустую — никто не был на кулдауне."
+        return (
+            f"🥶 <b>Ледниковый период!</b>\n"
+            f"Cooldown /grow сброшен у <b>{reset}</b> игрок(-ов) — можно снова расти."
+        )
+
+    async def _royal_battle(
+        self, dicks: list[Dick], uow: UnitOfWork
+    ) -> str | None:
+        """4-player tournament: two semis, then a final."""
+        eligible = [d for d in dicks if d.size.cm >= 5]
+        if len(eligible) < 4:
+            return None
+        players = self._rng.sample(eligible, 4)
+        a, b, c, d = players
+
+        semi1_winner, semi1_loser = self._duel(a, b)
+        semi2_winner, semi2_loser = self._duel(c, d)
+        champion, finalist = self._duel(semi1_winner, semi2_winner)
+
+        # rewards: champion +9, finalist +3, semi-losers -3
+        champion.size = champion.size.apply(9)
+        finalist.size = finalist.size.apply(3)
+        semi1_loser.size = semi1_loser.size.apply(-3)
+        semi2_loser.size = semi2_loser.size.apply(-3)
+        for p in (champion, finalist, semi1_loser, semi2_loser):
+            await uow.dicks.update(p)
+
+        champ_ref = await _mention_by_user_id(uow, champion.user_id)
+        fin_ref = await _mention_by_user_id(uow, finalist.user_id)
+        return (
+            f"👑 <b>Королевская битва!</b>\n"
+            f"🥇 {champ_ref} — <b>+9 см</b>, теперь <b>{champion.size.cm} см</b>\n"
+            f"🥈 {fin_ref} — <b>+3 см</b>, теперь <b>{finalist.size.cm} см</b>\n"
+            f"Полуфиналисты выбывают с −3 см."
+        )
+
+    def _duel(self, a: Dick, b: Dick) -> tuple[Dick, Dick]:
+        total = a.size.cm + b.size.cm
+        roll = self._rng.int_between(1, total) if total > 0 else 0
+        outcome = resolve_battle(a.size.cm, b.size.cm, roll)
+        return (a, b) if outcome.challenger_wins else (b, a)
+
+
+async def _mention_by_user_id(uow: UnitOfWork, user_id: int) -> str:
+    """Format an HTML mention for a user we only have by internal id."""
     from html import escape
 
-    label = f"@{username}" if username else f"id{tg_id}"
+    user = await uow.users.get_by_id(user_id)
+    if user is None:
+        return f"id{user_id}"
+    tg_id = int(user.tg_id)
+    label = f"@{user.username}" if user.username else f"id{tg_id}"
     return f'<a href="tg://user?id={tg_id}">{escape(label)}</a>'
-
-

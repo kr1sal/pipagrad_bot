@@ -33,11 +33,6 @@ class ToggleInteraction(SettingsChange):
 
 
 @dataclass(frozen=True, slots=True)
-class SetRandomEventInterval(SettingsChange):
-    minutes: int
-
-
-@dataclass(frozen=True, slots=True)
 class UpdateGroupSettingsCommand:
     chat_id: TelegramChatId
     actor_tg_id: TelegramUserId

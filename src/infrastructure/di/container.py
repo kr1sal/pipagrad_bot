@@ -163,8 +163,11 @@ class RequestProvider(Provider):
         clock: Clock,
         randomizer: Randomizer,
         telegram: TelegramGateway,
+        semen_config: SemenConfig,
     ) -> TriggerRandomEventsCycleUseCase:
-        return TriggerRandomEventsCycleUseCase(uow, clock, randomizer, telegram)
+        return TriggerRandomEventsCycleUseCase(
+            uow, clock, randomizer, telegram, semen_config
+        )
 
     @provide
     def get_global_top(self, uow: UnitOfWork) -> GetGlobalTopUseCase:
