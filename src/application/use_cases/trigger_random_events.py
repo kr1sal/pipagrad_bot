@@ -20,6 +20,7 @@ from src.domain.entities.semen_balance import SemenBalance, SemenConfig
 from src.domain.services.battle_resolver import resolve as resolve_battle
 from src.domain.value_objects.random_event_kind import RandomEventKind
 from src.domain.value_objects.telegram_ids import TelegramChatId
+from src.application.texts import ru as texts
 
 log = logging.getLogger(__name__)
 
@@ -162,10 +163,7 @@ class TriggerRandomEventsCycleUseCase:
         loss = self._rng.int_between(3, 10)
         target.size = target.size.apply(-loss)
         await uow.dicks.update(target)
-        return (
-            f"☄️ <b>Метеорит</b> упал в чат и попал по одному из вас!\n"
-            f"−{loss} см — новый размер: <b>{target.size.cm} см</b>"
-        )
+        return texts.meteor(loss, target.size.cm)
 
     async def _radiation(self, dicks: list[Dick], uow: UnitOfWork) -> str:
         gained = lost = 0
@@ -179,10 +177,7 @@ class TriggerRandomEventsCycleUseCase:
                 gained += 1
             elif applied < 0:
                 lost += 1
-        return (
-            f"☢️ <b>Радиация</b> прошла по чату. "
-            f"Выросли: {gained}, уменьшились: {lost}."
-        )
+        return texts.radiation(gained, lost)
 
     async def _spontaneous_battle(
         self, dicks: list[Dick], uow: UnitOfWork
@@ -204,11 +199,8 @@ class TriggerRandomEventsCycleUseCase:
 
         winner_ref = await _mention_by_user_id(uow, winner.user_id)
         loser_ref = await _mention_by_user_id(uow, loser.user_id)
-        return (
-            f"⚔️ <b>Внезапная битва!</b>\n"
-            f"{winner_ref} побеждает {loser_ref} и забирает {stake} см.\n"
-            f"Победитель: <b>{winner.size.cm} см</b> / "
-            f"Проигравший: <b>{loser.size.cm} см</b>"
+        return texts.spontaneous_battle(
+            winner_ref, loser_ref, stake, winner.size.cm, loser.size.cm
         )
 
     async def _hurricane(self, dicks: list[Dick], uow: UnitOfWork) -> str:
@@ -220,10 +212,7 @@ class TriggerRandomEventsCycleUseCase:
             d.size = d.size.apply(-loss)
             total_loss += loss
             await uow.dicks.update(d)
-        return (
-            f"🌪 <b>Ураган</b> сметает половину чата!\n"
-            f"Пострадало: {len(victims)} игрок(-ов), суммарно −{total_loss} см."
-        )
+        return texts.hurricane(len(victims), total_loss)
 
     async def _gift(self, dicks: list[Dick], uow: UnitOfWork) -> str:
         target = self._rng.choice(dicks)
@@ -231,11 +220,7 @@ class TriggerRandomEventsCycleUseCase:
         target.size = target.size.apply(bonus)
         await uow.dicks.update(target)
         ref = await _mention_by_user_id(uow, target.user_id)
-        return (
-            f"🎁 <b>Подарок с небес!</b>\n"
-            f"{ref} получает <b>+{bonus} см</b>. Новый размер: "
-            f"<b>{target.size.cm} см</b>."
-        )
+        return texts.gift(ref, bonus, target.size.cm)
 
     async def _viagra(self, dicks: list[Dick], uow: UnitOfWork, now) -> str:
         cfg = self._semen_config
@@ -248,10 +233,7 @@ class TriggerRandomEventsCycleUseCase:
                 balance.stored_ml = cap
                 balance.updated_at = now
             await uow.semen.upsert(balance)
-        return (
-            f"💊 <b>Виагра!</b>\n"
-            f"У всех {len(dicks)} игрок(-ов) сперма мгновенно до максимума."
-        )
+        return texts.viagra(len(dicks))
 
     async def _ice_age(self, dicks: list[Dick], uow: UnitOfWork) -> str:
         reset = 0
@@ -261,11 +243,8 @@ class TriggerRandomEventsCycleUseCase:
                 await uow.dicks.update(d)
                 reset += 1
         if reset == 0:
-            return "🥶 <b>Заморозка</b> прошла впустую — никто не был на кулдауне."
-        return (
-            f"🥶 <b>Ледниковый период!</b>\n"
-            f"Cooldown /grow сброшен у <b>{reset}</b> игрок(-ов) — можно снова расти."
-        )
+            return texts.ice_age_no_effect()
+        return texts.ice_age(reset)
 
     async def _royal_battle(
         self, dicks: list[Dick], uow: UnitOfWork
@@ -289,11 +268,8 @@ class TriggerRandomEventsCycleUseCase:
 
         champ_ref = await _mention_by_user_id(uow, champion.user_id)
         fin_ref = await _mention_by_user_id(uow, finalist.user_id)
-        return (
-            f"👑 <b>Королевская битва!</b>\n"
-            f"🥇 {champ_ref} — <b>+9 см</b>, теперь <b>{champion.size.cm} см</b>\n"
-            f"🥈 {fin_ref} — <b>+3 см</b>, теперь <b>{finalist.size.cm} см</b>\n"
-            f"Полуфиналисты выбывают с −3 см."
+        return texts.royal_battle(
+            champ_ref, champion.size.cm, fin_ref, finalist.size.cm
         )
 
     def _duel(self, a: Dick, b: Dick) -> tuple[Dick, Dick]:
@@ -319,7 +295,7 @@ class TriggerRandomEventsCycleUseCase:
         pending = await uow.pending_events.add(pending)
         assert pending.id is not None
 
-        text = _orgy_announcement_text(ORGY_TIMER_MINUTES)
+        text = texts.orgy_announcement(ORGY_TIMER_MINUTES)
         try:
             message_id = await self._telegram.announce_orgy(
                 chat_id, text, pending.id
@@ -357,7 +333,7 @@ class TriggerRandomEventsCycleUseCase:
         pending = await uow.pending_events.add(pending)
         assert pending.id is not None
 
-        text = _bot_battle_announcement_text(BOT_BATTLE_TIMER_MINUTES, label)
+        text = texts.bot_battle_announcement(BOT_BATTLE_TIMER_MINUTES, label)
         try:
             message_id = await self._telegram.announce_bot_battle(
                 chat_id, text, pending.id, label
@@ -367,25 +343,6 @@ class TriggerRandomEventsCycleUseCase:
             return False
         await uow.pending_events.set_message_id(pending.id, message_id)
         return True
-
-
-def _orgy_announcement_text(minutes_left: int) -> str:
-    return (
-        f"🎉 <b>Групповой секс!</b>\n"
-        f"Кто хочет — жми кнопку. Старт через <b>{minutes_left} мин</b>.\n"
-        f"Каждый участник потратит 10 мл спермы; кому хватит — получит +2 см."
-    )
-
-
-def _bot_battle_announcement_text(minutes_left: int, other_label: str) -> str:
-    return (
-        f"🤖 <b>Битва ботов!</b>\n"
-        f"<b>Pipagrad</b> vs <b>{other_label}</b>.\n"
-        f"Выбирай сторону — базовые силы 100/100, каждый игрок добавляет "
-        f"своим размером к своей стороне.\n"
-        f"Итог через <b>{minutes_left} мин</b>. Если Pipagrad побеждает — "
-        f"{other_label} вылетает из чата."
-    )
 
 
 async def _mention_by_user_id(uow: UnitOfWork, user_id: int) -> str:

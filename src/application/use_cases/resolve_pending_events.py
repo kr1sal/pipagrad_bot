@@ -7,6 +7,7 @@ from src.application.ports.clock import Clock
 from src.application.ports.randomizer import Randomizer
 from src.application.ports.telegram_gateway import TelegramGateway
 from src.application.ports.unit_of_work import UnitOfWork
+from src.application.texts import ru as texts
 from src.domain.entities.pending_event import (
     BOT_BATTLE_BASE_POT,
     ORGY_BONUS_CM,
@@ -127,17 +128,8 @@ class ResolvePendingEventsUseCase:
                 await uow.dicks.update(dick)
 
         if not succeeded:
-            return (
-                f"🎉 <b>Групповой секс закончен.</b>\n"
-                f"Собралось {len(participant_ids)}, но ни у кого не хватило "
-                f"спермы. Позор."
-            )
-        return (
-            f"🎉 <b>Групповой секс закончен!</b>\n"
-            f"Пришло: {len(participant_ids)}, отыгрались: "
-            f"<b>{len(succeeded)}</b>.\n"
-            f"Каждому +{ORGY_BONUS_CM} см."
-        )
+            return texts.orgy_resolved_nobody(len(participant_ids))
+        return texts.orgy_resolved(len(participant_ids), len(succeeded), ORGY_BONUS_CM)
 
     # ---------------------------------------------------------- bot_battle
 
@@ -156,18 +148,10 @@ class ResolvePendingEventsUseCase:
         pipa_wins = roll <= pipa_pot
 
         if pipa_wins:
-            text = (
-                f"🏆 <b>Pipagrad побеждает!</b> "
-                f"({pipa_pot} против {other_pot})\n"
-                f"{other_label} будет изгнан из чата."
-            )
+            text = texts.bot_battle_resolved_pipa_won(other_label, pipa_pot, other_pot)
             return text, TelegramUserId(opponent_bot_id) if opponent_bot_id else None
 
-        text = (
-            f"💀 <b>{other_label} побеждает.</b> "
-            f"({other_pot} против {pipa_pot})\n"
-            f"Pipagrad сохраняет достоинство и уходит зализывать раны."
-        )
+        text = texts.bot_battle_resolved_other_won(other_label, pipa_pot, other_pot)
         return text, None
 
 
