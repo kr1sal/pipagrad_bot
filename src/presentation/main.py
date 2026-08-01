@@ -43,7 +43,7 @@ async def main() -> None:
 
     setup_dishka(container=container, router=dp, auto_inject=True)
 
-    scheduler = RandomEventsScheduler(container, tick_seconds=60)
+    scheduler = RandomEventsScheduler(container)
     scheduler.start()
 
     try:
