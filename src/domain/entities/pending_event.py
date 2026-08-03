@@ -11,6 +11,7 @@ from src.domain.value_objects.telegram_ids import TelegramChatId
 class PendingEventKind(str, Enum):
     ORGY = "orgy"
     BOT_BATTLE = "bot_battle"
+    TEAM_BATTLE = "team_battle"
 
 
 # Orgy
@@ -21,6 +22,9 @@ ORGY_BONUS_CM = 2
 # Bot battle
 BOT_BATTLE_TIMER_MINUTES = 5
 BOT_BATTLE_BASE_POT = 100
+
+# Team battle (/battle join window, opens once the opponent accepts)
+TEAM_BATTLE_TIMER_MINUTES = 1
 
 
 @dataclass(slots=True)

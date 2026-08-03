@@ -129,3 +129,22 @@ def bot_battle_resolved_other_won(
         f"({other_pot} против {pipa_pot})\n"
         f"Pipagrad сохраняет достоинство и уходит зализывать раны."
     )
+
+
+# ------------------------------------------------------------ team battle
+
+def team_battle_resolved(
+    winner_label: str,
+    loser_label: str,
+    stake_cm: int,
+    winner_size_cm: int,
+    loser_size_cm: int,
+    winner_count: int,
+    loser_count: int,
+) -> str:
+    return (
+        f"🏆 <b>Сторона {winner_label}</b> побеждает! "
+        f"({winner_count} против {loser_count} игроков)\n"
+        f"{winner_label}: <b>{winner_size_cm} см</b> (+{stake_cm})\n"
+        f"{loser_label}: <b>{loser_size_cm} см</b> (-{stake_cm})"
+    )

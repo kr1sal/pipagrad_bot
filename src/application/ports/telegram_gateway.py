@@ -54,6 +54,17 @@ class TelegramGateway(Protocol):
         other_label: str,
     ) -> None: ...
 
+    async def update_team_battle_counts(
+        self,
+        chat_id: TelegramChatId,
+        message_id: int,
+        event_id: int,
+        side1_count: int,
+        side2_count: int,
+        challenger_label: str,
+        opponent_label: str,
+    ) -> None: ...
+
     async def finalize_message(
         self, chat_id: TelegramChatId, message_id: int, text: str
     ) -> None:

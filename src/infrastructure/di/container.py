@@ -31,6 +31,7 @@ from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
 from src.application.use_cases.join_pending import (
     JoinBotBattleUseCase,
     JoinOrgyUseCase,
+    JoinTeamBattleUseCase,
 )
 from src.application.use_cases.perform_interaction import PerformInteractionUseCase
 from src.application.use_cases.resolve_pending_events import (
@@ -162,9 +163,9 @@ class RequestProvider(Provider):
 
     @provide
     def respond_to_battle(
-        self, uow: UnitOfWork, clock: Clock, randomizer: Randomizer
+        self, uow: UnitOfWork, clock: Clock
     ) -> RespondToBattleUseCase:
-        return RespondToBattleUseCase(uow, clock, randomizer)
+        return RespondToBattleUseCase(uow, clock)
 
     @provide
     def trigger_random_events(
@@ -201,6 +202,12 @@ class RequestProvider(Provider):
         self, uow: UnitOfWork, clock: Clock
     ) -> JoinBotBattleUseCase:
         return JoinBotBattleUseCase(uow, clock)
+
+    @provide
+    def join_team_battle(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> JoinTeamBattleUseCase:
+        return JoinTeamBattleUseCase(uow, clock)
 
     @provide
     def get_global_top(self, uow: UnitOfWork) -> GetGlobalTopUseCase:

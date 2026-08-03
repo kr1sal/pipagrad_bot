@@ -16,6 +16,7 @@ from src.domain.entities.pending_event import (
     PendingEventKind,
 )
 from src.domain.entities.semen_balance import SemenBalance, SemenConfig
+from src.domain.services.battle_resolver import resolve as resolve_battle
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 
 log = logging.getLogger(__name__)
@@ -71,6 +72,11 @@ class ResolvePendingEventsUseCase:
                             event.chat_id, event.chat_message_id, text,
                             kick_user_id=kick_id,
                         )
+                    )
+                elif event.kind is PendingEventKind.TEAM_BATTLE:
+                    text = await self._resolve_team_battle(event, uow, now)
+                    outcomes.append(
+                        _Outcome(event.chat_id, event.chat_message_id, text)
                     )
                 assert event.id is not None
                 await uow.pending_events.delete(event.id)
@@ -153,6 +159,55 @@ class ResolvePendingEventsUseCase:
 
         text = texts.bot_battle_resolved_other_won(other_label, pipa_pot, other_pot)
         return text, None
+
+    # --------------------------------------------------------- team battle
+
+    async def _resolve_team_battle(
+        self, event: PendingEvent, uow: UnitOfWork, now
+    ) -> str:
+        battle_id = int(event.payload["battle_id"])
+        battle = await uow.battles.get(battle_id)
+        assert battle is not None
+
+        side1: list[int] = list(event.payload.get("side1", []))
+        side2: list[int] = list(event.payload.get("side2", []))
+        challenger_label: str = event.payload.get("challenger_label", "?")
+        opponent_label: str = event.payload.get("opponent_label", "?")
+
+        # Chance depends only on headcount per side, not dick size.
+        side1_count = 1 + len(side1)
+        side2_count = 1 + len(side2)
+        roll = self._rng.int_between(1, side1_count + side2_count)
+        side1_wins = resolve_battle(side1_count, side2_count, roll).challenger_wins
+
+        challenger_dick = await uow.dicks.get(battle.challenger_user_id, battle.chat_id)
+        opponent_dick = await uow.dicks.get(battle.opponent_user_id, battle.chat_id)
+        assert challenger_dick is not None and opponent_dick is not None
+
+        if side1_wins:
+            winner_dick, loser_dick = challenger_dick, opponent_dick
+            winner_user_id = battle.challenger_user_id
+            winner_label, loser_label = challenger_label, opponent_label
+            winner_count, loser_count = side1_count, side2_count
+        else:
+            winner_dick, loser_dick = opponent_dick, challenger_dick
+            winner_user_id = battle.opponent_user_id
+            winner_label, loser_label = opponent_label, challenger_label
+            winner_count, loser_count = side2_count, side1_count
+
+        winner_dick.size = winner_dick.size.apply(battle.stake_cm)
+        loser_dick.size = loser_dick.size.apply(-battle.stake_cm)
+        await uow.dicks.update(winner_dick)
+        await uow.dicks.update(loser_dick)
+
+        battle.resolve(winner_user_id=winner_user_id, now=now)
+        await uow.battles.update(battle)
+
+        return texts.team_battle_resolved(
+            winner_label, loser_label, battle.stake_cm,
+            winner_dick.size.cm, loser_dick.size.cm,
+            winner_count, loser_count,
+        )
 
 
 async def _sum_sizes(

@@ -14,6 +14,11 @@ class BotBattleCB(CallbackData, prefix="bb"):
     side: str  # "pipa" or "other"
 
 
+class TeamBattleCB(CallbackData, prefix="tb"):
+    event_id: int
+    side: int  # 1 (challenger's side) or 2 (opponent's side)
+
+
 def orgy_keyboard(event_id: int, joined_count: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(
@@ -35,6 +40,26 @@ def bot_battle_keyboard(
     kb.button(
         text=f"🤖 За {other_label} ({other_count})",
         callback_data=BotBattleCB(event_id=event_id, side="other").pack(),
+    )
+    kb.adjust(2)
+    return kb.as_markup()
+
+
+def team_battle_keyboard(
+    event_id: int,
+    side1_count: int,
+    side2_count: int,
+    challenger_label: str,
+    opponent_label: str,
+) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(
+        text=f"⚔️ {challenger_label} ({side1_count})",
+        callback_data=TeamBattleCB(event_id=event_id, side=1).pack(),
+    )
+    kb.button(
+        text=f"⚔️ {opponent_label} ({side2_count})",
+        callback_data=TeamBattleCB(event_id=event_id, side=2).pack(),
     )
     kb.adjust(2)
     return kb.as_markup()

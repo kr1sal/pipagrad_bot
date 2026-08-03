@@ -1,36 +1,37 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from src.application.dto.battle import (
     BattleDeclinedResult,
     BattleExpiredResult,
-    BattleResolvedResult,
+    BattleOpenedResult,
     RespondToBattleCommand,
 )
 from src.application.ports.clock import Clock
-from src.application.ports.randomizer import Randomizer
 from src.application.ports.unit_of_work import UnitOfWork
 from src.domain.entities.battle import BattleStatus
+from src.domain.entities.pending_event import (
+    TEAM_BATTLE_TIMER_MINUTES,
+    PendingEvent,
+    PendingEventKind,
+)
 from src.domain.exceptions import (
     BattleNotFound,
     BattleNotPending,
     InsufficientDickSize,
     NotYourBattle,
 )
-from src.domain.services.battle_resolver import resolve
-from src.domain.value_objects.telegram_ids import TelegramUserId
 
 
 class RespondToBattleUseCase:
-    def __init__(
-        self, uow: UnitOfWork, clock: Clock, randomizer: Randomizer
-    ) -> None:
+    def __init__(self, uow: UnitOfWork, clock: Clock) -> None:
         self._uow = uow
         self._clock = clock
-        self._randomizer = randomizer
 
     async def execute(
         self, command: RespondToBattleCommand
-    ) -> BattleResolvedResult | BattleDeclinedResult | BattleExpiredResult:
+    ) -> BattleOpenedResult | BattleDeclinedResult | BattleExpiredResult:
         now = self._clock.now()
         async with self._uow as uow:
             battle = await uow.battles.get(command.battle_id)
@@ -74,33 +75,40 @@ class RespondToBattleUseCase:
             if opponent_dick.size.cm < battle.stake_cm:
                 raise InsufficientDickSize(battle.stake_cm, opponent_dick.size.cm)
 
-            total = challenger_dick.size.cm + opponent_dick.size.cm
-            roll = self._randomizer.int_between(1, total) if total > 0 else 0
-            outcome = resolve(challenger_dick.size.cm, opponent_dick.size.cm, roll)
-
-            if outcome.challenger_wins:
-                winner_dick, loser_dick = challenger_dick, opponent_dick
-                winner_user, loser_user = challenger, opponent
-            else:
-                winner_dick, loser_dick = opponent_dick, challenger_dick
-                winner_user, loser_user = opponent, challenger
-
-            winner_dick.size = winner_dick.size.apply(battle.stake_cm)
-            loser_dick.size = loser_dick.size.apply(-battle.stake_cm)
-            assert winner_user.id is not None
-            battle.resolve(winner_user_id=winner_user.id, now=now)
-
-            await uow.dicks.update(winner_dick)
-            await uow.dicks.update(loser_dick)
+            battle.open_for_joining()
             await uow.battles.update(battle)
-            await uow.commit()
 
-            return BattleResolvedResult(
+            challenger_label = challenger.username or f"id{int(challenger.tg_id)}"
+            opponent_label = opponent.username or f"id{int(opponent.tg_id)}"
+
+            assert battle.id is not None
+            pending = PendingEvent.new(
+                chat_id=battle.chat_id,
+                kind=PendingEventKind.TEAM_BATTLE,
+                chat_message_id=command.chat_message_id,
+                resolves_at=now + timedelta(minutes=TEAM_BATTLE_TIMER_MINUTES),
+                now=now,
+                payload={
+                    "battle_id": battle.id,
+                    "challenger_user_id": battle.challenger_user_id,
+                    "opponent_user_id": battle.opponent_user_id,
+                    "challenger_label": challenger_label,
+                    "opponent_label": opponent_label,
+                    "side1": [],
+                    "side2": [],
+                },
+            )
+            pending = await uow.pending_events.add(pending)
+            await uow.commit()
+            assert pending.id is not None
+
+            return BattleOpenedResult(
+                pending_event_id=pending.id,
+                challenger_tg_id=challenger.tg_id,
+                opponent_tg_id=opponent.tg_id,
+                challenger_label=challenger_label,
+                opponent_label=opponent_label,
                 stake_cm=battle.stake_cm,
-                winner_tg_id=winner_user.tg_id,
-                loser_tg_id=loser_user.tg_id,
-                winner_new_size_cm=winner_dick.size.cm,
-                loser_new_size_cm=loser_dick.size.cm,
             )
 
 

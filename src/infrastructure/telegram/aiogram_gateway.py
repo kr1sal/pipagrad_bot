@@ -9,6 +9,7 @@ from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 from src.infrastructure.telegram.pending_keyboards import (
     bot_battle_keyboard,
     orgy_keyboard,
+    team_battle_keyboard,
 )
 
 _ADMIN_STATUSES = {ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR}
@@ -97,6 +98,31 @@ class AiogramTelegramGateway:
                     pipa_count=pipa_count,
                     other_count=other_count,
                     other_label=other_label,
+                ),
+            )
+        except TelegramBadRequest:
+            pass
+
+    async def update_team_battle_counts(
+        self,
+        chat_id: TelegramChatId,
+        message_id: int,
+        event_id: int,
+        side1_count: int,
+        side2_count: int,
+        challenger_label: str,
+        opponent_label: str,
+    ) -> None:
+        try:
+            await self._bot.edit_message_reply_markup(
+                chat_id=int(chat_id),
+                message_id=message_id,
+                reply_markup=team_battle_keyboard(
+                    event_id=event_id,
+                    side1_count=side1_count,
+                    side2_count=side2_count,
+                    challenger_label=challenger_label,
+                    opponent_label=opponent_label,
                 ),
             )
         except TelegramBadRequest:

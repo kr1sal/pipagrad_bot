@@ -34,6 +34,14 @@ class BotBattleJoinCounts:
     other_label: str
 
 
+@dataclass(frozen=True, slots=True)
+class TeamBattleJoinCounts:
+    side1_count: int
+    side2_count: int
+    challenger_label: str
+    opponent_label: str
+
+
 class JoinOrgyUseCase:
     def __init__(self, uow: UnitOfWork, clock: Clock) -> None:
         self._uow = uow
@@ -118,6 +126,70 @@ class JoinBotBattleUseCase:
                 other_count=len(other),
                 other_label=other_label,
             )
+
+
+class JoinTeamBattleUseCase:
+    def __init__(self, uow: UnitOfWork, clock: Clock) -> None:
+        self._uow = uow
+        self._clock = clock
+
+    async def execute(
+        self,
+        event_id: int,
+        actor_tg_id: TelegramUserId,
+        actor_username: str | None,
+        side: int,
+    ) -> tuple[JoinResult, TeamBattleJoinCounts | None]:
+        assert side in (1, 2)
+        now = self._clock.now()
+        async with self._uow as uow:
+            pending = await uow.pending_events.get(event_id)
+            if pending is None or pending.kind is not PendingEventKind.TEAM_BATTLE:
+                return JoinResult.NOT_FOUND, None
+
+            actor = await _get_or_create_user(uow, actor_tg_id, actor_username, now)
+            assert actor.id is not None
+
+            challenger_id = int(pending.payload["challenger_user_id"])
+            opponent_id = int(pending.payload["opponent_user_id"])
+            challenger_label: str = pending.payload.get("challenger_label", "?")
+            opponent_label: str = pending.payload.get("opponent_label", "?")
+            side1: list[int] = list(pending.payload.get("side1", []))
+            side2: list[int] = list(pending.payload.get("side2", []))
+
+            def counts() -> TeamBattleJoinCounts:
+                return TeamBattleJoinCounts(
+                    side1_count=1 + len(side1),
+                    side2_count=1 + len(side2),
+                    challenger_label=challenger_label,
+                    opponent_label=opponent_label,
+                )
+
+            on_side1 = actor.id == challenger_id or actor.id in side1
+            on_side2 = actor.id == opponent_id or actor.id in side2
+
+            if side == 1 and on_side2:
+                return JoinResult.ALREADY_ON_OTHER_SIDE, None
+            if side == 2 and on_side1:
+                return JoinResult.ALREADY_ON_OTHER_SIDE, None
+
+            if actor.id in (challenger_id, opponent_id):
+                # The challenger/opponent are implicitly on their own side already.
+                return JoinResult.JOINED, counts()
+
+            target = side1 if side == 1 else side2
+            if actor.id in target:
+                target.remove(actor.id)
+                result = JoinResult.LEFT
+            else:
+                target.append(actor.id)
+                result = JoinResult.JOINED
+
+            pending.payload["side1"] = side1
+            pending.payload["side2"] = side2
+            await uow.pending_events.update_payload(pending.id, pending.payload)
+            await uow.commit()
+            return result, counts()
 
 
 async def _get_or_create_user(

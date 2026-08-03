@@ -12,6 +12,7 @@ BATTLE_EXPIRATION = timedelta(minutes=5)
 
 class BattleStatus(str, Enum):
     PENDING = "pending"
+    OPEN = "open"
     RESOLVED = "resolved"
     DECLINED = "declined"
     EXPIRED = "expired"
@@ -59,6 +60,10 @@ class Battle:
     def decline(self, now: datetime) -> None:
         self.status = BattleStatus.DECLINED
         self.resolved_at = now
+
+    def open_for_joining(self) -> None:
+        """Opponent accepted — open a window during which others can join a side."""
+        self.status = BattleStatus.OPEN
 
     def resolve(self, winner_user_id: int, now: datetime) -> None:
         self.status = BattleStatus.RESOLVED

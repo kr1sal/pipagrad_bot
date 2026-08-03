@@ -189,17 +189,14 @@ def battle_not_pending() -> str:
     return "На этот вызов уже ответили."
 
 
-def battle_resolved(
-    winner_mention: str,
-    loser_mention: str,
-    stake_cm: int,
-    winner_size_cm: int,
-    loser_size_cm: int,
+def battle_opened(
+    challenger_mention: str, opponent_mention: str, stake_cm: int, minutes: int
 ) -> str:
     return (
-        f"🏆 Победил {winner_mention}!\n"
-        f"{winner_mention}: <b>{winner_size_cm} см</b> (+{stake_cm})\n"
-        f"{loser_mention}: <b>{loser_size_cm} см</b> (-{stake_cm})"
+        f"⚔️ Битва началась: {challenger_mention} vs {opponent_mention}!\n"
+        f"Ставка <b>{stake_cm} см</b> достанется победившей стороне целиком.\n"
+        f"Присоединяйтесь к любой стороне ({minutes} мин) — шанс победы "
+        f"зависит только от числа игроков на стороне, а не от размера."
     )
 
 

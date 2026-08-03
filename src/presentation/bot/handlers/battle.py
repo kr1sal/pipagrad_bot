@@ -9,13 +9,14 @@ from dishka.integrations.aiogram import FromDishka, inject
 from src.application.dto.battle import (
     BattleDeclinedResult,
     BattleExpiredResult,
-    BattleResolvedResult,
+    BattleOpenedResult,
     ChallengeBattleCommand,
     RespondToBattleCommand,
 )
 from src.application.use_cases.challenge_battle import ChallengeBattleUseCase
 from src.application.use_cases.respond_to_battle import RespondToBattleUseCase
 from src.domain.entities.battle import DEFAULT_STAKE_CM
+from src.domain.entities.pending_event import TEAM_BATTLE_TIMER_MINUTES
 from src.domain.exceptions import (
     BattleNotFound,
     BattleNotPending,
@@ -25,6 +26,7 @@ from src.domain.exceptions import (
     SelfInteraction,
 )
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
+from src.infrastructure.telegram.pending_keyboards import team_battle_keyboard
 from src.presentation.bot.keyboards.battle import BattleCB, build as build_kb
 from src.presentation.bot.texts import ru as texts
 
@@ -114,6 +116,7 @@ async def cb_respond(
                 battle_id=callback_data.battle_id,
                 actor_tg_id=TelegramUserId(query.from_user.id),
                 accept=callback_data.accept,
+                chat_message_id=query.message.message_id,
             )
         )
     except NotYourBattle:
@@ -131,7 +134,8 @@ async def cb_respond(
         )
         return
 
-    # Render outcome — replace the challenge message text and clear buttons
+    # Render outcome — replace the challenge message text (and buttons, for
+    # the terminal outcomes; BattleOpenedResult swaps in the join keyboard).
     if isinstance(outcome, BattleExpiredResult):
         await query.message.edit_text(texts.battle_expired())
     elif isinstance(outcome, BattleDeclinedResult):
@@ -144,29 +148,26 @@ async def cb_respond(
                 )
             )
         )
-    elif isinstance(outcome, BattleResolvedResult):
-        winner_is_actor = outcome.winner_tg_id == TelegramUserId(query.from_user.id)
-        # We know the actor (opponent) — challenger we know only by tg_id.
-        # For a nicer mention we'd need to fetch usernames; use plain id-mentions
-        # for the other party.
-        actor_mention = texts.mention(
+    elif isinstance(outcome, BattleOpenedResult):
+        # We know the actor (opponent) — challenger we know only by tg_id, so
+        # their mention falls back to a plain id-link.
+        opponent_mention = texts.mention(
             query.from_user.username, query.from_user.id, query.from_user.full_name
         )
-        other_id = (
-            outcome.loser_tg_id if winner_is_actor else outcome.winner_tg_id
-        )
-        other_mention = texts.mention(None, int(other_id))
-        if winner_is_actor:
-            winner_m, loser_m = actor_mention, other_mention
-        else:
-            winner_m, loser_m = other_mention, actor_mention
+        challenger_mention = texts.mention(None, int(outcome.challenger_tg_id))
         await query.message.edit_text(
-            texts.battle_resolved(
-                winner_mention=winner_m,
-                loser_mention=loser_m,
+            texts.battle_opened(
+                challenger_mention=challenger_mention,
+                opponent_mention=opponent_mention,
                 stake_cm=outcome.stake_cm,
-                winner_size_cm=outcome.winner_new_size_cm,
-                loser_size_cm=outcome.loser_new_size_cm,
-            )
+                minutes=TEAM_BATTLE_TIMER_MINUTES,
+            ),
+            reply_markup=team_battle_keyboard(
+                event_id=outcome.pending_event_id,
+                side1_count=1,
+                side2_count=1,
+                challenger_label=outcome.challenger_label,
+                opponent_label=outcome.opponent_label,
+            ),
         )
     await query.answer()

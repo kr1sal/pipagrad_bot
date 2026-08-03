@@ -26,15 +26,19 @@ class RespondToBattleCommand:
     battle_id: int
     actor_tg_id: TelegramUserId
     accept: bool
+    chat_message_id: int
 
 
 @dataclass(frozen=True, slots=True)
-class BattleResolvedResult:
+class BattleOpenedResult:
+    """Opponent accepted — a join window is now open for other players."""
+
+    pending_event_id: int
+    challenger_tg_id: TelegramUserId
+    opponent_tg_id: TelegramUserId
+    challenger_label: str
+    opponent_label: str
     stake_cm: int
-    winner_tg_id: TelegramUserId
-    loser_tg_id: TelegramUserId
-    winner_new_size_cm: int
-    loser_new_size_cm: int
 
 
 @dataclass(frozen=True, slots=True)
