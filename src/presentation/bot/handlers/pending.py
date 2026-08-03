@@ -137,4 +137,9 @@ async def cb_join_team_battle(
         challenger_label=counts.challenger_label,
         opponent_label=counts.opponent_label,
     )
-    await query.answer(texts.bot_battle_toast_side(side_label))
+    toast = (
+        texts.orgy_toast_left()
+        if result is JoinResult.LEFT
+        else texts.bot_battle_toast_side(side_label)
+    )
+    await query.answer(toast)
