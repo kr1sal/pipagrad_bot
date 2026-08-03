@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
@@ -19,52 +17,10 @@ from src.application.use_cases.perform_interaction import PerformInteractionUseC
 from src.domain.exceptions import SelfInteraction
 from src.domain.value_objects.interaction_type import InteractionType
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
+from src.presentation.bot.handlers.target_resolution import resolve_target
 from src.presentation.bot.texts import ru as texts
 
 router = Router(name="interactions")
-
-
-@dataclass(frozen=True, slots=True)
-class _Target:
-    tg_id: int
-    username: str | None
-    display_name: str | None  # only when we know it from a live TG user
-
-
-async def _resolve_target(
-    message: Message,
-    command: CommandObject,
-    find_user: FindUserByUsernameUseCase,
-) -> _Target | None:
-    """
-    Two ways to name a target:
-      1. Reply to their message (most convenient in groups).
-      2. `/cmd @username` — looked up in our users table (they must have
-         written to the bot at least once for us to know their id).
-
-    Reply takes precedence — if both are given, we go with reply because the
-    id there is authoritative.
-    """
-    replied = message.reply_to_message
-    if replied and replied.from_user and not replied.from_user.is_bot:
-        u = replied.from_user
-        return _Target(tg_id=u.id, username=u.username, display_name=u.full_name)
-
-    if command.args:
-        raw = command.args.strip().split()[0]
-        username = raw.lstrip("@")
-        if username:
-            found = await find_user.execute(username)
-            if found is not None:
-                return _Target(
-                    tg_id=int(found.tg_id),
-                    username=found.username,
-                    display_name=None,
-                )
-            # tell caller it wasn't reply nor a known username — via sentinel
-            return _Target(tg_id=0, username=username, display_name=None)
-
-    return None
 
 
 async def _handle(
@@ -77,7 +33,8 @@ async def _handle(
     if message.from_user is None:
         return
 
-    target = await _resolve_target(message, command, find_user)
+    raw_username = command.args.strip().split()[0] if command.args else None
+    target = await resolve_target(message, raw_username, find_user)
     if target is None:
         await message.reply(texts.interaction_needs_target(kind))
         return

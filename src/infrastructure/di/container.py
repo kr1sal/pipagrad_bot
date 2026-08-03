@@ -27,6 +27,7 @@ from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
 from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCase
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.get_user_global_stats import GetUserGlobalStatsUseCase
+from src.application.use_cases.gift_size import GiftSizeUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
 from src.application.use_cases.join_pending import (
     JoinBotBattleUseCase,
@@ -228,6 +229,10 @@ class RequestProvider(Provider):
         self, uow: UnitOfWork, clock: Clock, semen_config: SemenConfig
     ) -> GetMyChatBalanceUseCase:
         return GetMyChatBalanceUseCase(uow, clock, semen_config)
+
+    @provide
+    def gift_size(self, uow: UnitOfWork, clock: Clock) -> GiftSizeUseCase:
+        return GiftSizeUseCase(uow, clock)
 
 
 def build_container(settings: Settings, bot: Bot):

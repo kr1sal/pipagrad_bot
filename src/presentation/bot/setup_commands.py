@@ -22,6 +22,7 @@ _GROUP_ONLY: tuple[BotCommand, ...] = (
     BotCommand(command="kiss", description="Поцеловать (reply или @username)"),
     BotCommand(command="hug", description="Обнять (reply или @username)"),
     BotCommand(command="fuck", description="Трахнуть (reply или @username)"),
+    BotCommand(command="gift", description="Подарить см писюна: /gift см (reply или @username)"),
     BotCommand(command="battle", description="Битва: /battle [ставка] (reply)"),
     BotCommand(command="settings", description="Настройки чата (только админы)"),
 )

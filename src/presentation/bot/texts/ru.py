@@ -129,6 +129,42 @@ def interaction_denied(
     return "🚫 Отказ."
 
 
+def gift_needs_target() -> str:
+    return (
+        "Кому дарить? <code>/gift см</code> в ответ на сообщение, либо "
+        "<code>/gift см @username</code>."
+    )
+
+
+def gift_bad_amount() -> str:
+    return "Укажи сколько см дарить, например <code>/gift 5 @username</code>."
+
+
+def gift_self() -> str:
+    return "Самому себе — так себе подарок."
+
+
+def gift_insufficient(needed: int, actual: int) -> str:
+    return (
+        f"🚫 Не хватает см на подарок: нужно <b>{needed} см</b>, "
+        f"есть <b>{actual} см</b>."
+    )
+
+
+def gift_done(
+    actor_mention: str,
+    target_mention: str,
+    amount_cm: int,
+    actor_new_size_cm: int,
+    target_new_size_cm: int,
+) -> str:
+    return (
+        f"🎁 {actor_mention} подарил {amount_cm} см писюнчика {target_mention}\n"
+        f"Теперь у {actor_mention} <b>{actor_new_size_cm} см</b>, "
+        f"у {target_mention} <b>{target_new_size_cm} см</b>."
+    )
+
+
 def me_only_in_groups() -> str:
     return "Настройки взаимодействий работают в контексте группы. Позови меня в неё."
 
