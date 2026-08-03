@@ -25,6 +25,10 @@ class BattlesDisabled(DomainError):
     """Battles are turned off in this chat's settings."""
 
 
+class BattleAlreadyActive(DomainError):
+    """Challenger and opponent already have an unresolved battle between them."""
+
+
 class InsufficientDickSize(DomainError):
     def __init__(self, needed: int, actual: int) -> None:
         super().__init__(f"Need {needed} cm, have {actual}")

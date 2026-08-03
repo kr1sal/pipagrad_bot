@@ -55,7 +55,7 @@ class JoinOrgyUseCase:
     ) -> tuple[JoinResult, OrgyJoinCounts | None]:
         now = self._clock.now()
         async with self._uow as uow:
-            pending = await uow.pending_events.get(event_id)
+            pending = await uow.pending_events.get(event_id, for_update=True)
             if pending is None or pending.kind is not PendingEventKind.ORGY:
                 return JoinResult.NOT_FOUND, None
 
@@ -90,7 +90,7 @@ class JoinBotBattleUseCase:
         assert side in ("pipa", "other")
         now = self._clock.now()
         async with self._uow as uow:
-            pending = await uow.pending_events.get(event_id)
+            pending = await uow.pending_events.get(event_id, for_update=True)
             if pending is None or pending.kind is not PendingEventKind.BOT_BATTLE:
                 return JoinResult.NOT_FOUND, None
 
@@ -143,7 +143,7 @@ class JoinTeamBattleUseCase:
         assert side in (1, 2)
         now = self._clock.now()
         async with self._uow as uow:
-            pending = await uow.pending_events.get(event_id)
+            pending = await uow.pending_events.get(event_id, for_update=True)
             if pending is None or pending.kind is not PendingEventKind.TEAM_BATTLE:
                 return JoinResult.NOT_FOUND, None
 

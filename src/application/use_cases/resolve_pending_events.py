@@ -60,27 +60,36 @@ class ResolvePendingEventsUseCase:
         async with self._uow as uow:
             events = await uow.pending_events.list_ready(now)
             for event in events:
-                if event.kind is PendingEventKind.ORGY:
-                    text = await self._resolve_orgy(event, uow, now)
-                    outcomes.append(
-                        _Outcome(event.chat_id, event.chat_message_id, text)
-                    )
-                elif event.kind is PendingEventKind.BOT_BATTLE:
-                    text, kick_id = await self._resolve_bot_battle(event, uow)
-                    outcomes.append(
-                        _Outcome(
+                # Commit per event, not once for the whole batch: a bug in
+                # resolving one event (e.g. a dangling battle_id) must not
+                # roll back — and thereby indefinitely re-block — every other
+                # ready event in this tick.
+                try:
+                    if event.kind is PendingEventKind.ORGY:
+                        text = await self._resolve_orgy(event, uow, now)
+                        outcome = _Outcome(event.chat_id, event.chat_message_id, text)
+                    elif event.kind is PendingEventKind.BOT_BATTLE:
+                        text, kick_id = await self._resolve_bot_battle(event, uow)
+                        outcome = _Outcome(
                             event.chat_id, event.chat_message_id, text,
                             kick_user_id=kick_id,
                         )
+                    elif event.kind is PendingEventKind.TEAM_BATTLE:
+                        text = await self._resolve_team_battle(event, uow, now)
+                        outcome = _Outcome(event.chat_id, event.chat_message_id, text)
+                    else:
+                        continue
+                    assert event.id is not None
+                    await uow.pending_events.delete(event.id)
+                    await uow.commit()
+                except Exception:  # noqa: BLE001
+                    log.exception(
+                        "failed to resolve pending event id=%s kind=%s",
+                        event.id, event.kind,
                     )
-                elif event.kind is PendingEventKind.TEAM_BATTLE:
-                    text = await self._resolve_team_battle(event, uow, now)
-                    outcomes.append(
-                        _Outcome(event.chat_id, event.chat_message_id, text)
-                    )
-                assert event.id is not None
-                await uow.pending_events.delete(event.id)
-            await uow.commit()
+                    await uow.rollback()
+                    continue
+                outcomes.append(outcome)
 
         for o in outcomes:
             try:

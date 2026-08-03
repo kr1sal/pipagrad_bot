@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from sqlalchemy import update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.battle import Battle, BattleStatus
 from src.domain.value_objects.telegram_ids import TelegramChatId
 from src.infrastructure.persistence.models import BattleModel
+
+_ACTIVE_STATUSES = (BattleStatus.PENDING.value, BattleStatus.OPEN.value)
 
 
 class SqlAlchemyBattleRepository:
@@ -30,6 +32,30 @@ class SqlAlchemyBattleRepository:
 
     async def get(self, battle_id: int) -> Battle | None:
         row = await self._session.get(BattleModel, battle_id)
+        return _to_entity(row) if row else None
+
+    async def get_active_between(
+        self, chat_id: TelegramChatId, user_a_id: int, user_b_id: int
+    ) -> Battle | None:
+        stmt = (
+            select(BattleModel)
+            .where(
+                BattleModel.chat_id == int(chat_id),
+                BattleModel.status.in_(_ACTIVE_STATUSES),
+                or_(
+                    and_(
+                        BattleModel.challenger_user_id == user_a_id,
+                        BattleModel.opponent_user_id == user_b_id,
+                    ),
+                    and_(
+                        BattleModel.challenger_user_id == user_b_id,
+                        BattleModel.opponent_user_id == user_a_id,
+                    ),
+                ),
+            )
+            .limit(1)
+        )
+        row = (await self._session.scalars(stmt)).first()
         return _to_entity(row) if row else None
 
     async def update(self, battle: Battle) -> None:

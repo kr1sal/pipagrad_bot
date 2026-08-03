@@ -160,6 +160,10 @@ def battles_disabled() -> str:
     return "🚫 Битвы отключены в этом чате."
 
 
+def battle_already_active() -> str:
+    return "⚔️ У вас уже есть незавершённая битва друг с другом — доиграйте её."
+
+
 def battle_challenge(
     challenger_mention: str, opponent_mention: str, stake_cm: int
 ) -> str:

@@ -18,6 +18,7 @@ from src.application.use_cases.respond_to_battle import RespondToBattleUseCase
 from src.domain.entities.battle import DEFAULT_STAKE_CM
 from src.domain.entities.pending_event import TEAM_BATTLE_TIMER_MINUTES
 from src.domain.exceptions import (
+    BattleAlreadyActive,
     BattleNotFound,
     BattleNotPending,
     BattlesDisabled,
@@ -84,6 +85,9 @@ async def handle_battle(
         return
     except BattlesDisabled:
         await message.reply(texts.battles_disabled())
+        return
+    except BattleAlreadyActive:
+        await message.reply(texts.battle_already_active())
         return
     except InsufficientDickSize as e:
         await message.reply(texts.battle_insufficient(e.needed, e.actual))

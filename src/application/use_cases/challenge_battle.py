@@ -8,6 +8,7 @@ from src.domain.entities.dick import Dick
 from src.domain.entities.group import Group
 from src.domain.entities.user import User
 from src.domain.exceptions import (
+    BattleAlreadyActive,
     BattlesDisabled,
     InsufficientDickSize,
     SelfInteraction,
@@ -39,6 +40,12 @@ class ChallengeBattleUseCase:
                 uow, command.opponent_tg_id, command.opponent_username, now
             )
             assert challenger.id is not None and opponent.id is not None
+
+            active = await uow.battles.get_active_between(
+                command.chat_id, challenger.id, opponent.id
+            )
+            if active is not None:
+                raise BattleAlreadyActive()
 
             challenger_dick = await _get_or_create_dick(
                 uow, challenger.id, command.chat_id

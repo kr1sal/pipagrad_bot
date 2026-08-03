@@ -94,11 +94,19 @@ class BattleRepository(Protocol):
 
     async def update(self, battle: Battle) -> None: ...
 
+    async def get_active_between(
+        self, chat_id: TelegramChatId, user_a_id: int, user_b_id: int
+    ) -> Battle | None:
+        """An unresolved (pending/open) battle between this pair, if any."""
+        ...
+
 
 class PendingEventRepository(Protocol):
     async def add(self, event: PendingEvent) -> PendingEvent: ...
 
-    async def get(self, event_id: int) -> PendingEvent | None: ...
+    async def get(
+        self, event_id: int, *, for_update: bool = False
+    ) -> PendingEvent | None: ...
 
     async def list_ready(self, now: datetime) -> list[PendingEvent]: ...
 

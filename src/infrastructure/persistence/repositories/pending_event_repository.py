@@ -28,8 +28,12 @@ class SqlAlchemyPendingEventRepository:
         event.id = model.id
         return event
 
-    async def get(self, event_id: int) -> PendingEvent | None:
-        row = await self._session.get(PendingEventModel, event_id)
+    async def get(
+        self, event_id: int, *, for_update: bool = False
+    ) -> PendingEvent | None:
+        row = await self._session.get(
+            PendingEventModel, event_id, with_for_update=for_update
+        )
         return _to_entity(row) if row else None
 
     async def list_ready(self, now: datetime) -> list[PendingEvent]:
