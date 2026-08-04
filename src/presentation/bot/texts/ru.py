@@ -165,7 +165,7 @@ def gift_done(
     )
 
 
-def me_only_in_groups() -> str:
+def me_unsupported_here() -> str:
     return "Тут это не работает — напиши мне в личку или позови в группу."
 
 

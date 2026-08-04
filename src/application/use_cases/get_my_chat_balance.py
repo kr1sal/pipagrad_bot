@@ -9,9 +9,10 @@ from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 
 class GetMyChatBalanceUseCase:
     """
-    Read-only projection of the caller's per-chat state: current dick size and
-    semen level. No mutation — safe to call for display purposes without
-    creating rows for players who haven't started yet (returns fresh defaults).
+    Read-only projection of the caller's state in one scope (a real chat, or
+    GLOBAL_CHAT_ID): current dick size and semen level. No mutation — safe to
+    call for display purposes without creating rows for players who haven't
+    started yet (returns fresh defaults).
     """
 
     def __init__(

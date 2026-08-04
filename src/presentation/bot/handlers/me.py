@@ -32,7 +32,7 @@ async def handle_me(
     get_balance: FromDishka[GetMyChatBalanceUseCase],
 ) -> None:
     if message.chat.type not in _ALLOWED_TYPES:
-        await message.reply(texts.me_only_in_groups())
+        await message.reply(texts.me_unsupported_here())
         return
     if message.from_user is None:
         return
