@@ -166,12 +166,13 @@ def gift_done(
 
 
 def me_only_in_groups() -> str:
-    return "Настройки взаимодействий работают в контексте группы. Позови меня в неё."
+    return "Тут это не работает — напиши мне в личку или позови в группу."
 
 
-def me_header(balance: MyChatBalance) -> str:
+def me_header(balance: MyChatBalance, is_global: bool) -> str:
+    scope = "Мой глобальный профиль" if is_global else "Мой профиль в этом чате"
     return (
-        "<b>Мой профиль в этом чате</b>\n"
+        f"<b>{scope}</b>\n"
         f"🍆 Писюнчик: <b>{balance.dick_size_cm} см</b>\n"
         f"💦 Сперма: <b>{balance.semen_current_ml}/{balance.semen_cap_ml} мл</b> "
         f"(+{balance.regen_per_hour} мл/час)\n\n"

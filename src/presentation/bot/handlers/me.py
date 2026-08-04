@@ -14,13 +14,14 @@ from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCas
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
 from src.application.use_cases.toggle_my_preference import ToggleMyPreferenceUseCase
 from src.domain.value_objects.interaction_type import InteractionType
-from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
+from src.domain.value_objects.telegram_ids import GLOBAL_CHAT_ID, TelegramUserId
+from src.presentation.bot.handlers.scope import resolve_scope_chat_id
 from src.presentation.bot.keyboards.me import PrefsCB, build as build_kb
 from src.presentation.bot.texts import ru as texts
 
 router = Router(name="me")
 
-_GROUP_TYPES = {ChatType.GROUP, ChatType.SUPERGROUP}
+_ALLOWED_TYPES = {ChatType.GROUP, ChatType.SUPERGROUP, ChatType.PRIVATE}
 
 
 @router.message(Command("me"))
@@ -30,13 +31,13 @@ async def handle_me(
     get_prefs: FromDishka[GetMyPreferencesUseCase],
     get_balance: FromDishka[GetMyChatBalanceUseCase],
 ) -> None:
-    if message.chat.type not in _GROUP_TYPES:
+    if message.chat.type not in _ALLOWED_TYPES:
         await message.reply(texts.me_only_in_groups())
         return
     if message.from_user is None:
         return
     tg_user_id = TelegramUserId(message.from_user.id)
-    chat_id = TelegramChatId(message.chat.id)
+    chat_id = resolve_scope_chat_id(message.chat)
     prefs = await get_prefs.execute(
         GetMyPreferencesCommand(
             tg_user_id=tg_user_id,
@@ -46,7 +47,7 @@ async def handle_me(
     )
     balance = await get_balance.execute(tg_user_id, chat_id)
     await message.reply(
-        texts.me_header(balance),
+        texts.me_header(balance, is_global=chat_id == GLOBAL_CHAT_ID),
         reply_markup=build_kb(prefs),
     )
 
@@ -71,7 +72,7 @@ async def cb_toggle_pref(
         ToggleMyPreferenceCommand(
             tg_user_id=TelegramUserId(query.from_user.id),
             tg_username=query.from_user.username,
-            chat_id=TelegramChatId(query.message.chat.id),
+            chat_id=resolve_scope_chat_id(query.message.chat),
             kind=kind,
         )
     )
