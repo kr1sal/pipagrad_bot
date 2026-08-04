@@ -16,7 +16,8 @@ from src.application.use_cases.find_user_by_username import (
 from src.application.use_cases.perform_interaction import PerformInteractionUseCase
 from src.domain.exceptions import SelfInteraction
 from src.domain.value_objects.interaction_type import InteractionType
-from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
+from src.domain.value_objects.telegram_ids import TelegramUserId
+from src.presentation.bot.handlers.scope import resolve_scope_chat_id
 from src.presentation.bot.handlers.target_resolution import resolve_target
 from src.presentation.bot.texts import ru as texts
 
@@ -49,7 +50,7 @@ async def _handle(
     try:
         result = await use_case.execute(
             PerformInteractionCommand(
-                chat_id=TelegramChatId(message.chat.id),
+                chat_id=resolve_scope_chat_id(message.chat),
                 actor_tg_id=TelegramUserId(actor.id),
                 actor_username=actor.username,
                 target_tg_id=TelegramUserId(target.tg_id),

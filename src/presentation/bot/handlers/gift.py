@@ -9,7 +9,8 @@ from src.application.dto.gift import GiftSizeCommand
 from src.application.use_cases.find_user_by_username import FindUserByUsernameUseCase
 from src.application.use_cases.gift_size import GiftSizeUseCase
 from src.domain.exceptions import InsufficientDickSize, SelfInteraction
-from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
+from src.domain.value_objects.telegram_ids import TelegramUserId
+from src.presentation.bot.handlers.scope import resolve_scope_chat_id
 from src.presentation.bot.handlers.target_resolution import resolve_target
 from src.presentation.bot.texts import ru as texts
 
@@ -53,7 +54,7 @@ async def handle_gift(
     try:
         result = await gift_size.execute(
             GiftSizeCommand(
-                chat_id=TelegramChatId(message.chat.id),
+                chat_id=resolve_scope_chat_id(message.chat),
                 actor_tg_id=TelegramUserId(actor.id),
                 actor_username=actor.username,
                 target_tg_id=TelegramUserId(target.tg_id),
