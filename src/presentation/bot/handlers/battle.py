@@ -14,6 +14,7 @@ from src.application.dto.battle import (
     RespondToBattleCommand,
 )
 from src.application.use_cases.challenge_battle import ChallengeBattleUseCase
+from src.application.use_cases.find_user_by_username import FindUserByUsernameUseCase
 from src.application.use_cases.respond_to_battle import RespondToBattleUseCase
 from src.domain.entities.battle import DEFAULT_STAKE_CM
 from src.domain.entities.pending_event import TEAM_BATTLE_TIMER_MINUTES
@@ -28,7 +29,9 @@ from src.domain.exceptions import (
 )
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 from src.infrastructure.telegram.pending_keyboards import team_battle_keyboard
-from src.presentation.bot.keyboards.battle import BattleCB, build as build_kb
+from src.presentation.bot.handlers.target_resolution import resolve_target
+from src.presentation.bot.keyboards.battle import BattleCB
+from src.presentation.bot.keyboards.battle import build as build_kb
 from src.presentation.bot.texts import ru as texts
 
 router = Router(name="battle")
@@ -42,6 +45,7 @@ async def handle_battle(
     message: Message,
     command: CommandObject,
     challenge: FromDishka[ChallengeBattleUseCase],
+    find_user: FromDishka[FindUserByUsernameUseCase],
 ) -> None:
     if message.chat.type not in _GROUP_TYPES:
         await message.reply(texts.battle_only_in_groups())
@@ -50,16 +54,28 @@ async def handle_battle(
     if message.from_user is None:
         return
 
-    replied = message.reply_to_message
-    if replied is None or replied.from_user is None or replied.from_user.is_bot:
+    raw_username = None
+    stake_tokens = []
+    for token in command.args.strip().split() if command.args else []:
+        if token.startswith("@") and raw_username is None:
+            raw_username = token
+        else:
+            stake_tokens.append(token)
+
+    target = await resolve_target(message, raw_username, find_user)
+    if target is None:
         await message.reply(texts.battle_needs_reply())
+        return
+    if target.tg_id == 0:
+        assert target.username is not None
+        await message.reply(texts.interaction_user_not_found(target.username))
         return
 
     stake = DEFAULT_STAKE_CM
-    if command.args:
+    if stake_tokens:
         try:
-            stake = int(command.args.strip().split()[0])
-        except (ValueError, IndexError):
+            stake = int(stake_tokens[0])
+        except ValueError:
             await message.reply(texts.battle_bad_stake())
             return
         if stake < 1:
@@ -67,7 +83,6 @@ async def handle_battle(
             return
 
     actor = message.from_user
-    target = replied.from_user
 
     try:
         result = await challenge.execute(
@@ -75,7 +90,7 @@ async def handle_battle(
                 chat_id=TelegramChatId(message.chat.id),
                 challenger_tg_id=TelegramUserId(actor.id),
                 challenger_username=actor.username,
-                opponent_tg_id=TelegramUserId(target.id),
+                opponent_tg_id=TelegramUserId(target.tg_id),
                 opponent_username=target.username,
                 stake_cm=stake,
             )
@@ -96,7 +111,9 @@ async def handle_battle(
     await message.reply(
         texts.battle_challenge(
             challenger_mention=texts.mention(actor.username, actor.id, actor.full_name),
-            opponent_mention=texts.mention(target.username, target.id, target.full_name),
+            opponent_mention=texts.mention(
+                target.username, target.tg_id, target.display_name
+            ),
             stake_cm=result.stake_cm,
         ),
         reply_markup=build_kb(result.battle_id),

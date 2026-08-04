@@ -33,7 +33,7 @@ def start() -> str:
         "Основные команды:\n"
         "• /grow — вырастить писюнчик (раз в сутки)\n"
         "• /pet | /kiss | /hug | /fuck — reply <b>или</b> <code>@username</code>\n"
-        "• /battle [ставка] — вызов на битву (reply)\n"
+        "• /battle [ставка] [@username] — вызов на битву (reply или @)\n"
         "• /top — глобальный топ\n"
         "• /me — мой профиль в этом чате\n"
         "• /settings — настройки чата (только админы)\n\n"
@@ -182,11 +182,14 @@ def me_header(balance: MyChatBalance, is_global: bool) -> str:
 
 
 def battle_only_in_groups() -> str:
-    return "Битвы — только в группах, вызывай reply на сообщение противника."
+    return "Битвы — только в группах, вызывай reply или @username на противника."
 
 
 def battle_needs_reply() -> str:
-    return "Ответь на сообщение того, с кем хочешь сразиться: /battle [ставка]."
+    return (
+        "Кого вызвать? Либо ответь на его сообщение, либо укажи "
+        "<code>/battle [ставка] @username</code>."
+    )
 
 
 def battle_bad_stake() -> str:
@@ -370,7 +373,7 @@ def inline_help_message() -> str:
         "<b>Pipagrad</b> — как играть 🍆\n\n"
         "• /grow — вырастить писюнчик (раз в сутки)\n"
         "• /pet | /kiss | /fuck — reply на сообщение\n"
-        "• /battle [ставка] — вызов на битву (reply)\n"
+        "• /battle [ставка] [@username] — вызов на битву (reply или @)\n"
         "• /top — глобальный топ\n"
         "• /me — мой профиль в этом чате\n"
         "• /settings — настройки чата (только админы)\n\n"
