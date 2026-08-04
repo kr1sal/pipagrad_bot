@@ -16,26 +16,20 @@ from src.application.dto.interaction import (
     InteractionDenied,
     PerformInteractionCommand,
 )
-from src.application.dto.stats import TopEntry, UserGlobalStats
+from src.application.dto.stats import MyChatBalance, TopEntry
 from src.application.use_cases.find_user_by_username import (
     FindUserByUsernameUseCase,
     FoundUser,
 )
-from src.application.use_cases.get_global_top import GetGlobalTopUseCase
-from src.application.use_cases.get_user_global_stats import GetUserGlobalStatsUseCase
+from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCase
+from src.application.use_cases.get_top import GetTopUseCase
 from src.application.use_cases.perform_interaction import PerformInteractionUseCase
 from src.domain.exceptions import SelfInteraction
 from src.domain.value_objects.interaction_type import InteractionType
-from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
+from src.domain.value_objects.telegram_ids import GLOBAL_CHAT_ID, TelegramUserId
 from src.presentation.bot.texts import ru as texts
 
 log = logging.getLogger(__name__)
-
-# Sentinel chat_id for user-to-user interactions triggered from inline mode.
-# Real Telegram chat ids are never 0 (private > 0, groups < 0), so this can't
-# clash with a live chat. All inline interactions share this one virtual chat,
-# so semen/dick state accumulated via inline is separate from any real group.
-DIRECT_CHAT_ID = TelegramChatId(0)
 
 router = Router(name="inline")
 
@@ -44,8 +38,8 @@ router = Router(name="inline")
 @inject
 async def handle_inline(
     query: InlineQuery,
-    get_stats: FromDishka[GetUserGlobalStatsUseCase],
-    get_top: FromDishka[GetGlobalTopUseCase],
+    get_balance: FromDishka[GetMyChatBalanceUseCase],
+    get_top: FromDishka[GetTopUseCase],
     find_user: FromDishka[FindUserByUsernameUseCase],
 ) -> None:
     actor = query.from_user
@@ -59,12 +53,13 @@ async def handle_inline(
         await query.answer(results=results, cache_time=5, is_personal=True)
         return
 
-    # Otherwise the default menu: my card, top, help.
-    stats = await get_stats.execute(TelegramUserId(actor.id))
-    top = await get_top.execute(limit=10)
+    # Otherwise the default menu: my card, top, help. Inline mode always
+    # operates on the global scope, same as DMs with the bot.
+    balance = await get_balance.execute(TelegramUserId(actor.id), GLOBAL_CHAT_ID)
+    top = await get_top.execute(GLOBAL_CHAT_ID, limit=10)
     mention = texts.mention(actor.username, actor.id, actor.full_name)
     results = [
-        _card_result(actor.id, mention, stats),
+        _card_result(actor.id, mention, balance),
         _top_result(top),
         _help_result(),
     ]
@@ -145,14 +140,14 @@ def _action_result(
 
 
 def _card_result(
-    user_tg_id: int, mention: str, stats: UserGlobalStats | None
+    user_tg_id: int, mention: str, balance: MyChatBalance
 ) -> InlineQueryResultArticle:
     return InlineQueryResultArticle(
         id=f"card-{user_tg_id}",
         title=texts.inline_card_title(),
-        description=texts.inline_card_description(stats),
+        description=texts.inline_card_description(balance),
         input_message_content=InputTextMessageContent(
-            message_text=texts.inline_card_message(mention, stats),
+            message_text=texts.inline_card_message(mention, balance),
             parse_mode="HTML",
         ),
     )
@@ -216,7 +211,7 @@ async def on_chosen_action(
     try:
         result = await perform.execute(
             PerformInteractionCommand(
-                chat_id=DIRECT_CHAT_ID,
+                chat_id=GLOBAL_CHAT_ID,
                 actor_tg_id=TelegramUserId(actor_tg_id),
                 actor_username=chosen.from_user.username,
                 target_tg_id=TelegramUserId(target_tg_id),

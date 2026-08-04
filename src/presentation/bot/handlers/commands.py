@@ -10,9 +10,9 @@ from src.application.dto.grow_dick import (
     GrowDickCooldown,
     GrowDickResult,
 )
-from src.application.use_cases.get_global_top import GetGlobalTopUseCase
+from src.application.use_cases.get_top import GetTopUseCase
 from src.application.use_cases.grow_dick import GrowDickUseCase
-from src.domain.value_objects.telegram_ids import TelegramUserId
+from src.domain.value_objects.telegram_ids import GLOBAL_CHAT_ID, TelegramUserId
 from src.presentation.bot.handlers.scope import resolve_scope_chat_id
 from src.presentation.bot.texts import ru as texts
 
@@ -51,13 +51,14 @@ async def handle_grow(
 @inject
 async def handle_top(
     message: Message,
-    get_top: FromDishka[GetGlobalTopUseCase],
+    get_top: FromDishka[GetTopUseCase],
 ) -> None:
-    entries = await get_top.execute(limit=10)
+    chat_id = resolve_scope_chat_id(message.chat)
+    entries = await get_top.execute(chat_id, limit=10)
     if not entries:
         await message.reply(texts.top_empty())
         return
-    lines = [texts.top_header()]
+    lines = [texts.top_header(is_global=chat_id == GLOBAL_CHAT_ID)]
     for e in entries:
         lines.append(
             texts.top_line(

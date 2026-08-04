@@ -44,15 +44,6 @@ class DickRepository(Protocol):
         self, chat_id: TelegramChatId, limit: int
     ) -> list[Dick]: ...
 
-    async def list_all_for_user(self, user_id: int) -> list[Dick]: ...
-
-    async def list_global_top_by_max(self, limit: int) -> list[tuple[int, int]]:
-        """
-        Returns (user_id, max_size_cm) pairs, sorted by max_size_cm desc, tie-
-        broken by user_id asc for a stable order. Limited to `limit` rows.
-        """
-        ...
-
 
 class GroupRepository(Protocol):
     async def get(self, chat_id: TelegramChatId) -> Group | None: ...

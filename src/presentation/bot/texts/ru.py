@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from html import escape
 
-from src.application.dto.stats import MyChatBalance, TopEntry, UserGlobalStats
+from src.application.dto.stats import MyChatBalance, TopEntry
 from src.domain.services.interaction_policy import Denial
 from src.domain.value_objects.interaction_type import InteractionType
 
@@ -243,11 +243,11 @@ def battle_opened(
 
 
 def top_empty() -> str:
-    return "Пока никто нигде не растил писюнчик. Напиши /grow в группе."
+    return "Пока никто тут не растил писюнчик. Напиши /grow."
 
 
-def top_header() -> str:
-    return "<b>🏆 Глобальный топ</b> (по максимуму среди всех чатов)"
+def top_header(is_global: bool) -> str:
+    return "<b>🏆 Глобальный топ</b>" if is_global else "<b>🏆 Топ этого чата</b>"
 
 
 def top_line(rank: int, mention: str, size_cm: int) -> str:
@@ -259,22 +259,18 @@ def inline_card_title() -> str:
     return "🍆 Мой писюнчик"
 
 
-def inline_card_description(stats: UserGlobalStats | None) -> str:
-    if stats is None:
-        return "Пока пусто — начни /grow в группе."
-    return f"Максимум {stats.max_cm} см, всего {stats.total_cm} см в {stats.chats_count} чат(-ах)"
+def inline_card_description(balance: MyChatBalance) -> str:
+    return (
+        f"{balance.dick_size_cm} см, спермы "
+        f"{balance.semen_current_ml}/{balance.semen_cap_ml} мл"
+    )
 
 
-def inline_card_message(user_mention: str, stats: UserGlobalStats | None) -> str:
-    if stats is None:
-        return (
-            f"У {user_mention} пока нет писюнчика 😢\n"
-            f"Начни /grow в группе, чтобы им похвастаться."
-        )
+def inline_card_message(user_mention: str, balance: MyChatBalance) -> str:
     return (
         f"🍆 <b>Писюнчик {user_mention}</b>\n"
-        f"Максимум: <b>{stats.max_cm} см</b>\n"
-        f"Всего: <b>{stats.total_cm} см</b> в {stats.chats_count} чат(-ах)"
+        f"Размер: <b>{balance.dick_size_cm} см</b>\n"
+        f"💦 Сперма: <b>{balance.semen_current_ml}/{balance.semen_cap_ml} мл</b>"
     )
 
 

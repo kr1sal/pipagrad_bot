@@ -22,11 +22,10 @@ from src.application.use_cases.ensure_group_registered import (
 from src.application.use_cases.find_user_by_username import (
     FindUserByUsernameUseCase,
 )
-from src.application.use_cases.get_global_top import GetGlobalTopUseCase
 from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
 from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCase
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
-from src.application.use_cases.get_user_global_stats import GetUserGlobalStatsUseCase
+from src.application.use_cases.get_top import GetTopUseCase
 from src.application.use_cases.gift_size import GiftSizeUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
 from src.application.use_cases.join_pending import (
@@ -211,12 +210,8 @@ class RequestProvider(Provider):
         return JoinTeamBattleUseCase(uow, clock)
 
     @provide
-    def get_global_top(self, uow: UnitOfWork) -> GetGlobalTopUseCase:
-        return GetGlobalTopUseCase(uow)
-
-    @provide
-    def get_user_global_stats(self, uow: UnitOfWork) -> GetUserGlobalStatsUseCase:
-        return GetUserGlobalStatsUseCase(uow)
+    def get_top(self, uow: UnitOfWork) -> GetTopUseCase:
+        return GetTopUseCase(uow)
 
     @provide
     def find_user_by_username(
