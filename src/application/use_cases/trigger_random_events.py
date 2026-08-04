@@ -188,7 +188,11 @@ class TriggerRandomEventsCycleUseCase:
             return None
         a, b = self._rng.sample(eligible, 2)
         total = a.size.cm + b.size.cm
-        roll = self._rng.int_between(1, total) if total > 0 else 0
+        roll = (
+            self._rng.int_between(1, total)
+            if total > 0
+            else self._rng.int_between(0, 1)
+        )
         outcome = resolve_battle(a.size.cm, b.size.cm, roll)
         winner, loser = (a, b) if outcome.challenger_wins else (b, a)
 
@@ -274,7 +278,11 @@ class TriggerRandomEventsCycleUseCase:
 
     def _duel(self, a: Dick, b: Dick) -> tuple[Dick, Dick]:
         total = a.size.cm + b.size.cm
-        roll = self._rng.int_between(1, total) if total > 0 else 0
+        roll = (
+            self._rng.int_between(1, total)
+            if total > 0
+            else self._rng.int_between(0, 1)
+        )
         outcome = resolve_battle(a.size.cm, b.size.cm, roll)
         return (a, b) if outcome.challenger_wins else (b, a)
 

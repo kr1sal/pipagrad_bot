@@ -204,8 +204,15 @@ class ResolvePendingEventsUseCase:
             winner_label, loser_label = opponent_label, challenger_label
             winner_count, loser_count = side2_count, side1_count
 
-        winner_dick.size = winner_dick.size.apply(battle.stake_cm)
-        loser_dick.size = loser_dick.size.apply(-battle.stake_cm)
+        # Re-derive the actual transfer instead of trusting battle.stake_cm:
+        # the loser's size may have dropped below the staked amount since
+        # accept-time (e.g. via /gift or another battle during the join
+        # window), and DickSize.apply() clamps at 0 — independently applying
+        # +stake to the winner and -stake to the loser would then mint cm
+        # out of nowhere instead of transferring what the loser actually has.
+        transfer_cm = min(battle.stake_cm, loser_dick.size.cm)
+        winner_dick.size = winner_dick.size.apply(transfer_cm)
+        loser_dick.size = loser_dick.size.apply(-transfer_cm)
         await uow.dicks.update(winner_dick)
         await uow.dicks.update(loser_dick)
 
@@ -213,7 +220,7 @@ class ResolvePendingEventsUseCase:
         await uow.battles.update(battle)
 
         return texts.team_battle_resolved(
-            winner_label, loser_label, battle.stake_cm,
+            winner_label, loser_label, transfer_cm,
             winner_dick.size.cm, loser_dick.size.cm,
             winner_count, loser_count,
         )

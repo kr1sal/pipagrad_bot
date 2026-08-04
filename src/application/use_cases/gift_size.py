@@ -6,6 +6,7 @@ from src.application.ports.unit_of_work import UnitOfWork
 from src.domain.entities.dick import Dick
 from src.domain.entities.user import User
 from src.domain.exceptions import InsufficientDickSize, SelfInteraction
+from src.domain.value_objects.dick_size import MAX_SIZE_CM
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 
 
@@ -40,14 +41,20 @@ class GiftSizeUseCase:
                     needed=command.amount_cm, actual=actor_dick.size.cm
                 )
 
-            actor_dick.size = actor_dick.size.apply(-command.amount_cm)
-            target_dick.size = target_dick.size.apply(command.amount_cm)
+            # Cap by the target's remaining headroom too, so a transfer near
+            # MAX_SIZE_CM can't take more from the actor than the target can
+            # actually receive.
+            transfer_cm = min(
+                command.amount_cm, MAX_SIZE_CM - target_dick.size.cm
+            )
+            actor_dick.size = actor_dick.size.apply(-transfer_cm)
+            target_dick.size = target_dick.size.apply(transfer_cm)
             await uow.dicks.update(actor_dick)
             await uow.dicks.update(target_dick)
             await uow.commit()
 
             return GiftSizeResult(
-                amount_cm=command.amount_cm,
+                amount_cm=transfer_cm,
                 actor_new_size_cm=actor_dick.size.cm,
                 target_new_size_cm=target_dick.size.cm,
             )
