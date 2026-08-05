@@ -28,7 +28,7 @@ def mention(username: str | None, tg_id: int, display_name: str | None = None) -
 
 
 def plain_label(username: str | None, tg_id: int, display_name: str | None = None) -> str:
-    label = display_name or (f"@{username}" if username else f"id{tg_id}")
+    label = display_name or username or f"id{tg_id}"
     return escape(label)
 
 

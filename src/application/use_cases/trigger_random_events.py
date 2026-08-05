@@ -360,5 +360,5 @@ async def _label_by_user_id(uow: UnitOfWork, user_id: int) -> str:
     if user is None:
         return f"id{user_id}"
     tg_id = int(user.tg_id)
-    label = f"@{user.username}" if user.username else f"id{tg_id}"
+    label = user.username or f"id{tg_id}"
     return escape(label)
