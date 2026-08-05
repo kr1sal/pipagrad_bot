@@ -201,8 +201,8 @@ class TriggerRandomEventsCycleUseCase:
         await uow.dicks.update(winner)
         await uow.dicks.update(loser)
 
-        winner_ref = await _mention_by_user_id(uow, winner.user_id)
-        loser_ref = await _mention_by_user_id(uow, loser.user_id)
+        winner_ref = await _label_by_user_id(uow, winner.user_id)
+        loser_ref = await _label_by_user_id(uow, loser.user_id)
         return texts.spontaneous_battle(
             winner_ref, loser_ref, stake, winner.size.cm, loser.size.cm
         )
@@ -223,7 +223,7 @@ class TriggerRandomEventsCycleUseCase:
         bonus = self._rng.int_between(5, 15)
         target.size = target.size.apply(bonus)
         await uow.dicks.update(target)
-        ref = await _mention_by_user_id(uow, target.user_id)
+        ref = await _label_by_user_id(uow, target.user_id)
         return texts.gift(ref, bonus, target.size.cm)
 
     async def _viagra(self, dicks: list[Dick], uow: UnitOfWork, now) -> str:
@@ -270,8 +270,8 @@ class TriggerRandomEventsCycleUseCase:
         for p in (champion, finalist, semi1_loser, semi2_loser):
             await uow.dicks.update(p)
 
-        champ_ref = await _mention_by_user_id(uow, champion.user_id)
-        fin_ref = await _mention_by_user_id(uow, finalist.user_id)
+        champ_ref = await _label_by_user_id(uow, champion.user_id)
+        fin_ref = await _label_by_user_id(uow, finalist.user_id)
         return texts.royal_battle(
             champ_ref, champion.size.cm, fin_ref, finalist.size.cm
         )
@@ -353,7 +353,7 @@ class TriggerRandomEventsCycleUseCase:
         return True
 
 
-async def _mention_by_user_id(uow: UnitOfWork, user_id: int) -> str:
+async def _label_by_user_id(uow: UnitOfWork, user_id: int) -> str:
     from html import escape
 
     user = await uow.users.get_by_id(user_id)
@@ -361,4 +361,4 @@ async def _mention_by_user_id(uow: UnitOfWork, user_id: int) -> str:
         return f"id{user_id}"
     tg_id = int(user.tg_id)
     label = f"@{user.username}" if user.username else f"id{tg_id}"
-    return f'<a href="tg://user?id={tg_id}">{escape(label)}</a>'
+    return escape(label)

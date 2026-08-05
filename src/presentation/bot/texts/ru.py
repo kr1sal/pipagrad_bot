@@ -27,6 +27,11 @@ def mention(username: str | None, tg_id: int, display_name: str | None = None) -
     return f'<a href="tg://user?id={tg_id}">{escape(label)}</a>'
 
 
+def plain_label(username: str | None, tg_id: int, display_name: str | None = None) -> str:
+    label = display_name or (f"@{username}" if username else f"id{tg_id}")
+    return escape(label)
+
+
 def start() -> str:
     return (
         "Добро пожаловать в <b>Pipagrad</b> 🍆\n\n"
@@ -292,10 +297,12 @@ def inline_top_description(top: list[TopEntry]) -> str:
 def inline_top_message(top: list[TopEntry]) -> str:
     if not top:
         return top_empty()
-    lines = [top_header()]
+    lines = [top_header(is_global=True)]
     for e in top:
         lines.append(
-            top_line(rank=e.rank, mention=mention(e.username, int(e.tg_id)), size_cm=e.size_cm)
+            top_line(
+                rank=e.rank, mention=plain_label(e.username, int(e.tg_id)), size_cm=e.size_cm
+            )
         )
     return "\n".join(lines)
 

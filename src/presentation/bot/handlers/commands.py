@@ -63,7 +63,7 @@ async def handle_top(
         lines.append(
             texts.top_line(
                 rank=e.rank,
-                mention=texts.mention(e.username, int(e.tg_id)),
+                mention=texts.plain_label(e.username, int(e.tg_id)),
                 size_cm=e.size_cm,
             )
         )

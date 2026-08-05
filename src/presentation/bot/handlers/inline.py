@@ -57,9 +57,9 @@ async def handle_inline(
     # operates on the global scope, same as DMs with the bot.
     balance = await get_balance.execute(TelegramUserId(actor.id), GLOBAL_CHAT_ID)
     top = await get_top.execute(GLOBAL_CHAT_ID, limit=10)
-    mention = texts.mention(actor.username, actor.id, actor.full_name)
+    label = texts.plain_label(actor.username, actor.id, actor.full_name)
     results = [
-        _card_result(actor.id, mention, balance),
+        _card_result(actor.id, label, balance),
         _top_result(top),
         _help_result(),
     ]
