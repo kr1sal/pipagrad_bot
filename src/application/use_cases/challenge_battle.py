@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.application.dto.battle import BattleChallenged, ChallengeBattleCommand
 from src.application.ports.clock import Clock
 from src.application.ports.unit_of_work import UnitOfWork
-from src.domain.entities.battle import Battle
+from src.domain.entities.battle import Battle, BattleStatus
 from src.domain.entities.dick import Dick
 from src.domain.entities.group import Group
 from src.domain.entities.user import User
@@ -45,7 +45,11 @@ class ChallengeBattleUseCase:
                 command.chat_id, challenger.id, opponent.id
             )
             if active is not None:
-                raise BattleAlreadyActive()
+                if active.status is BattleStatus.PENDING and active.is_expired(now):
+                    active.expire(now)
+                    await uow.battles.update(active)
+                else:
+                    raise BattleAlreadyActive()
 
             challenger_dick = await _get_or_create_dick(
                 uow, challenger.id, command.chat_id
