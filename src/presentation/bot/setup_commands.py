@@ -13,6 +13,11 @@ _UNIVERSAL: tuple[BotCommand, ...] = (
     BotCommand(command="start", description="Что это такое"),
     BotCommand(command="top", description="Глобальный топ по максимуму"),
     BotCommand(command="grow", description="Вырастить писюнчик (раз в сутки)"),
+    BotCommand(command="history", description="История изменений см"),
+    BotCommand(command="wallet", description="Баланс PipaCoin"),
+    BotCommand(command="exchange", description="Обменять см на PipaCoin: /exchange см"),
+    BotCommand(command="pay", description="Перевести PipaCoin: /pay сумма @username"),
+    BotCommand(command="pipahistory", description="История операций с PipaCoin"),
 )
 
 # Commands that only work in groups. They need reply/target/chat context.

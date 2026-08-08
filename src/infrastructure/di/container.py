@@ -19,12 +19,19 @@ from src.application.use_cases.challenge_battle import ChallengeBattleUseCase
 from src.application.use_cases.ensure_group_registered import (
     EnsureGroupRegisteredUseCase,
 )
+from src.application.use_cases.exchange_size import (
+    ExchangeSizeConfig,
+    ExchangeSizeUseCase,
+)
 from src.application.use_cases.find_user_by_username import (
     FindUserByUsernameUseCase,
 )
+from src.application.use_cases.get_dick_history import GetDickHistoryUseCase
 from src.application.use_cases.get_group_settings import GetGroupSettingsUseCase
 from src.application.use_cases.get_my_chat_balance import GetMyChatBalanceUseCase
 from src.application.use_cases.get_my_preferences import GetMyPreferencesUseCase
+from src.application.use_cases.get_pipacoin_history import GetPipaCoinHistoryUseCase
+from src.application.use_cases.get_pipacoin_wallet import GetPipaCoinWalletUseCase
 from src.application.use_cases.get_top import GetTopUseCase
 from src.application.use_cases.gift_size import GiftSizeUseCase
 from src.application.use_cases.grow_dick import GrowDickConfig, GrowDickUseCase
@@ -39,6 +46,7 @@ from src.application.use_cases.resolve_pending_events import (
 )
 from src.application.use_cases.respond_to_battle import RespondToBattleUseCase
 from src.application.use_cases.toggle_my_preference import ToggleMyPreferenceUseCase
+from src.application.use_cases.transfer_pipacoin import TransferPipaCoinUseCase
 from src.application.use_cases.trigger_random_events import (
     TriggerRandomEventsCycleUseCase,
 )
@@ -76,6 +84,10 @@ class AppProvider(Provider):
             min_delta_cm=settings.grow_min_delta_cm,
             max_delta_cm=settings.grow_max_delta_cm,
         )
+
+    @provide
+    def exchange_size_config(self, settings: Settings) -> ExchangeSizeConfig:
+        return ExchangeSizeConfig(pipacoin_per_cm=settings.pipacoin_per_cm)
 
     @provide
     def semen_config(self, settings: Settings) -> SemenConfig:
@@ -228,6 +240,30 @@ class RequestProvider(Provider):
     @provide
     def gift_size(self, uow: UnitOfWork, clock: Clock) -> GiftSizeUseCase:
         return GiftSizeUseCase(uow, clock)
+
+    @provide
+    def get_dick_history(self, uow: UnitOfWork) -> GetDickHistoryUseCase:
+        return GetDickHistoryUseCase(uow)
+
+    @provide
+    def exchange_size(
+        self, uow: UnitOfWork, clock: Clock, config: ExchangeSizeConfig
+    ) -> ExchangeSizeUseCase:
+        return ExchangeSizeUseCase(uow, clock, config)
+
+    @provide
+    def transfer_pipacoin(
+        self, uow: UnitOfWork, clock: Clock
+    ) -> TransferPipaCoinUseCase:
+        return TransferPipaCoinUseCase(uow, clock)
+
+    @provide
+    def get_pipacoin_wallet(self, uow: UnitOfWork) -> GetPipaCoinWalletUseCase:
+        return GetPipaCoinWalletUseCase(uow)
+
+    @provide
+    def get_pipacoin_history(self, uow: UnitOfWork) -> GetPipaCoinHistoryUseCase:
+        return GetPipaCoinHistoryUseCase(uow)
 
 
 def build_container(settings: Settings, bot: Bot):

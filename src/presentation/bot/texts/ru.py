@@ -3,9 +3,36 @@ from __future__ import annotations
 from datetime import timedelta
 from html import escape
 
+from src.application.dto.dick_history import DickHistoryLine, DickHistoryPage
+from src.application.dto.pipacoin import PipaCoinHistoryLine, PipaCoinHistoryPage
 from src.application.dto.stats import MyChatBalance, TopEntry
 from src.domain.services.interaction_policy import Denial
+from src.domain.value_objects.dick_history_reason import DickHistoryReason
 from src.domain.value_objects.interaction_type import InteractionType
+from src.domain.value_objects.pipacoin_transaction_kind import (
+    PipaCoinTransactionKind,
+)
+
+_PIPACOIN_KIND_LABEL: dict[PipaCoinTransactionKind, str] = {
+    PipaCoinTransactionKind.EXCHANGE: "🪙 обмен см",
+    PipaCoinTransactionKind.TRANSFER_SENT: "➖ перевод",
+    PipaCoinTransactionKind.TRANSFER_RECEIVED: "➕ перевод",
+}
+
+_HISTORY_REASON_LABEL: dict[DickHistoryReason, str] = {
+    DickHistoryReason.GROW: "🌱 рост",
+    DickHistoryReason.GIFT_SENT: "🎁 подарил",
+    DickHistoryReason.GIFT_RECEIVED: "🎁 подарили",
+    DickHistoryReason.METEOR: "☄️ метеорит",
+    DickHistoryReason.RADIATION: "☢️ радиация",
+    DickHistoryReason.SPONTANEOUS_BATTLE: "⚔️ случайная битва",
+    DickHistoryReason.HURRICANE: "🌀 ураган",
+    DickHistoryReason.RANDOM_GIFT: "🎉 случайный подарок",
+    DickHistoryReason.ROYAL_BATTLE: "👑 королевская битва",
+    DickHistoryReason.ORGY: "🔥 оргия",
+    DickHistoryReason.TEAM_BATTLE: "⚔️ командная битва",
+    DickHistoryReason.EXCHANGE: "🪙 обмен на PipaCoin",
+}
 
 _VERB_PAST: dict[InteractionType, str] = {
     InteractionType.PET: "погладил",
@@ -41,6 +68,9 @@ def start() -> str:
         "• /battle [ставка] [@username] — вызов на битву (reply или @)\n"
         "• /top — глобальный топ\n"
         "• /me — мой профиль в этом чате\n"
+        "• /history — история изменений см\n"
+        "• /wallet, /exchange см, /pay сумма @username, /pipahistory — "
+        "банк PipaCoin\n"
         "• /settings — настройки чата (только админы)\n\n"
         "Ещё умею inline: набери <code>@pipagrad_bot</code> в любом чате "
         "или <code>@pipagrad_bot @username</code> чтобы взаимодействовать."
@@ -387,3 +417,107 @@ def inline_help_message() -> str:
         "Сперма копится со временем и тратится при /fuck. "
         "Максимум растёт вместе с размером писюнчика."
     )
+
+
+def _history_line(line: DickHistoryLine) -> str:
+    sign = "+" if line.delta_cm > 0 else ""
+    label = _HISTORY_REASON_LABEL.get(line.reason, line.reason.value)
+    when = line.created_at.strftime("%d.%m %H:%M")
+    return (
+        f"{when} · {label} · <b>{sign}{line.delta_cm} см</b> "
+        f"(стало {line.new_size_cm} см)"
+    )
+
+
+def history_page(page: DickHistoryPage) -> str:
+    if not page.lines:
+        if page.page == 0:
+            return "Пока нет истории изменений. Начни с /grow."
+        return "Дальше пусто."
+    header = "<b>📜 История изменений</b>" if page.page == 0 else (
+        f"<b>📜 История изменений</b> (стр. {page.page + 1})"
+    )
+    lines = [header] + [_history_line(line) for line in page.lines]
+    return "\n".join(lines)
+
+
+def wallet_balance(balance: int) -> str:
+    return f"🪙 Баланс PipaCoin: <b>{balance}</b>"
+
+
+def exchange_bad_amount() -> str:
+    return "Укажи сколько см обменять, например <code>/exchange 5</code>."
+
+
+def exchange_insufficient(needed: int, actual: int) -> str:
+    return (
+        f"🚫 Не хватает см на обмен: нужно <b>{needed} см</b>, "
+        f"есть <b>{actual} см</b>."
+    )
+
+
+def exchange_done(
+    spent_cm: int, gained_pipacoin: int, new_size_cm: int, new_balance: int
+) -> str:
+    return (
+        f"🪙 Обменял <b>{spent_cm} см</b> на <b>{gained_pipacoin} PipaCoin</b>\n"
+        f"Остаток: <b>{new_size_cm} см</b>, баланс: <b>{new_balance} PipaCoin</b>"
+    )
+
+
+def pay_needs_target() -> str:
+    return (
+        "Кому платить? <code>/pay сумма</code> в ответ на сообщение, либо "
+        "<code>/pay сумма @username</code>."
+    )
+
+
+def pay_bad_amount() -> str:
+    return "Укажи сколько PipaCoin отправить, например <code>/pay 5 @username</code>."
+
+
+def pay_self() -> str:
+    return "Самому себе перевести не получится."
+
+
+def pay_insufficient(needed: int, actual: int) -> str:
+    return (
+        f"🚫 Не хватает PipaCoin: нужно <b>{needed}</b>, есть <b>{actual}</b>."
+    )
+
+
+def pay_done(
+    actor_mention: str,
+    target_mention: str,
+    amount: int,
+    actor_new_balance: int,
+    target_new_balance: int,
+) -> str:
+    return (
+        f"🪙 {actor_mention} перевёл {amount} PipaCoin {target_mention}\n"
+        f"Теперь у {actor_mention} <b>{actor_new_balance}</b>, "
+        f"у {target_mention} <b>{target_new_balance}</b>."
+    )
+
+
+def _pipacoin_history_line(line: PipaCoinHistoryLine) -> str:
+    sign = "+" if line.delta > 0 else ""
+    label = _PIPACOIN_KIND_LABEL.get(line.kind, line.kind.value)
+    when = line.created_at.strftime("%d.%m %H:%M")
+    counterparty = f" ({line.counterparty_label})" if line.counterparty_label else ""
+    return (
+        f"{when} · {label}{counterparty} · <b>{sign}{line.delta}</b> "
+        f"(баланс {line.balance_after})"
+    )
+
+
+def pipacoin_history_page(page: PipaCoinHistoryPage) -> str:
+    if not page.lines:
+        if page.page == 0:
+            return "Пока нет операций с PipaCoin. Начни с /exchange."
+        return "Дальше пусто."
+    header = "<b>🪙 История PipaCoin</b>" if page.page == 0 else (
+        f"<b>🪙 История PipaCoin</b> (стр. {page.page + 1})"
+    )
+    lines = [header] + [_pipacoin_history_line(line) for line in page.lines]
+    return "\n".join(lines)

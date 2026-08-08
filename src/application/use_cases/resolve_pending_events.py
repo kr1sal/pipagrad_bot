@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from src.application import dick_history
 from src.application.ports.clock import Clock
 from src.application.ports.randomizer import Randomizer
 from src.application.ports.telegram_gateway import TelegramGateway
@@ -17,6 +18,7 @@ from src.domain.entities.pending_event import (
 )
 from src.domain.entities.semen_balance import SemenBalance, SemenConfig
 from src.domain.services.battle_resolver import resolve as resolve_battle
+from src.domain.value_objects.dick_history_reason import DickHistoryReason
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 
 log = logging.getLogger(__name__)
@@ -139,8 +141,18 @@ class ResolvePendingEventsUseCase:
                 dick = await uow.dicks.get(user_id, event.chat_id)
                 if dick is None:
                     continue
+                old_cm = dick.size.cm
                 dick.size = dick.size.apply(ORGY_BONUS_CM)
                 await uow.dicks.update(dick)
+                await dick_history.record(
+                    uow,
+                    user_id=user_id,
+                    chat_id=event.chat_id,
+                    delta_cm=dick.size.cm - old_cm,
+                    new_size_cm=dick.size.cm,
+                    reason=DickHistoryReason.ORGY,
+                    now=now,
+                )
 
         if not succeeded:
             return texts.orgy_resolved_nobody(len(participant_ids))
@@ -215,6 +227,24 @@ class ResolvePendingEventsUseCase:
         loser_dick.size = loser_dick.size.apply(-transfer_cm)
         await uow.dicks.update(winner_dick)
         await uow.dicks.update(loser_dick)
+        await dick_history.record(
+            uow,
+            user_id=winner_dick.user_id,
+            chat_id=winner_dick.chat_id,
+            delta_cm=transfer_cm,
+            new_size_cm=winner_dick.size.cm,
+            reason=DickHistoryReason.TEAM_BATTLE,
+            now=now,
+        )
+        await dick_history.record(
+            uow,
+            user_id=loser_dick.user_id,
+            chat_id=loser_dick.chat_id,
+            delta_cm=-transfer_cm,
+            new_size_cm=loser_dick.size.cm,
+            reason=DickHistoryReason.TEAM_BATTLE,
+            now=now,
+        )
 
         battle.resolve(winner_user_id=winner_user_id, now=now)
         await uow.battles.update(battle)

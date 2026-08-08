@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     semen_regen_per_hour: int = Field(default=6, alias="SEMEN_REGEN_PER_HOUR")
     fuck_cost_ml: int = Field(default=20, alias="FUCK_COST_ML")
 
+    pipacoin_per_cm: int = Field(default=10, alias="PIPACOIN_PER_CM")
+
     @property
     def postgres_dsn(self) -> str:
         return (

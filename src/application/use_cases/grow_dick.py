@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
+from src.application import dick_history
 from src.application.dto.grow_dick import (
     GrowDickCommand,
     GrowDickCooldown,
@@ -14,6 +15,7 @@ from src.application.ports.unit_of_work import UnitOfWork
 from src.domain.entities.dick import Dick
 from src.domain.entities.user import User
 from src.domain.exceptions import CooldownActive
+from src.domain.value_objects.dick_history_reason import DickHistoryReason
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,5 +66,14 @@ class GrowDickUseCase:
                 )
 
             await uow.dicks.update(dick)
+            await dick_history.record(
+                uow,
+                user_id=user.id,
+                chat_id=command.chat_id,
+                delta_cm=applied,
+                new_size_cm=dick.size.cm,
+                reason=DickHistoryReason.GROW,
+                now=now,
+            )
             await uow.commit()
             return GrowDickResult(delta_cm=applied, new_size_cm=dick.size.cm)

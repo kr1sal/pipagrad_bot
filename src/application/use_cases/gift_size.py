@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from src.application import dick_history
 from src.application.dto.gift import GiftSizeCommand, GiftSizeResult
 from src.application.ports.clock import Clock
 from src.application.ports.unit_of_work import UnitOfWork
 from src.domain.entities.dick import Dick
 from src.domain.entities.user import User
 from src.domain.exceptions import InsufficientDickSize, SelfInteraction
+from src.domain.value_objects.dick_history_reason import DickHistoryReason
 from src.domain.value_objects.dick_size import MAX_SIZE_CM
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
 
@@ -51,6 +53,24 @@ class GiftSizeUseCase:
             target_dick.size = target_dick.size.apply(transfer_cm)
             await uow.dicks.update(actor_dick)
             await uow.dicks.update(target_dick)
+            await dick_history.record(
+                uow,
+                user_id=actor.id,
+                chat_id=command.chat_id,
+                delta_cm=-transfer_cm,
+                new_size_cm=actor_dick.size.cm,
+                reason=DickHistoryReason.GIFT_SENT,
+                now=now,
+            )
+            await dick_history.record(
+                uow,
+                user_id=target.id,
+                chat_id=command.chat_id,
+                delta_cm=transfer_cm,
+                new_size_cm=target_dick.size.cm,
+                reason=DickHistoryReason.GIFT_RECEIVED,
+                now=now,
+            )
             await uow.commit()
 
             return GiftSizeResult(

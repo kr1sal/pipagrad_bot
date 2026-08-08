@@ -46,3 +46,10 @@ class BattleNotPending(DomainError):
 
 class NotYourBattle(DomainError):
     """Someone other than the invited opponent tried to respond."""
+
+
+class InsufficientPipaCoinBalance(DomainError):
+    def __init__(self, needed: int, actual: int) -> None:
+        super().__init__(f"Need {needed} PipaCoin, have {actual}")
+        self.needed = needed
+        self.actual = actual

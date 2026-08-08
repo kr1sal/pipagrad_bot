@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+from src.application import dick_history
 from src.application.ports.clock import Clock
 from src.application.ports.randomizer import Randomizer
 from src.application.ports.telegram_gateway import BotAdmin, TelegramGateway
@@ -18,6 +19,7 @@ from src.domain.entities.pending_event import (
 )
 from src.domain.entities.semen_balance import SemenBalance, SemenConfig
 from src.domain.services.battle_resolver import resolve as resolve_battle
+from src.domain.value_objects.dick_history_reason import DickHistoryReason
 from src.domain.value_objects.random_event_kind import RandomEventKind
 from src.domain.value_objects.telegram_ids import TelegramChatId
 from src.application.texts import ru as texts
@@ -118,29 +120,29 @@ class TriggerRandomEventsCycleUseCase:
         return fired_count
 
     async def _roll_and_apply(
-        self, group: Group, dicks: list[Dick], uow: UnitOfWork, now
+        self, group: Group, dicks: list[Dick], uow: UnitOfWork, now: datetime
     ) -> _EventOutcome:
         for _ in range(_MAX_PICK_ATTEMPTS):
             kind = self._rng.choice(_WEIGHTED_KINDS)
             if kind is RandomEventKind.METEOR:
-                return _spoken(await self._meteor(dicks, uow))
+                return _spoken(await self._meteor(dicks, uow, now))
             if kind is RandomEventKind.RADIATION:
-                return _spoken(await self._radiation(dicks, uow))
+                return _spoken(await self._radiation(dicks, uow, now))
             if kind is RandomEventKind.SPONTANEOUS_BATTLE:
-                text = await self._spontaneous_battle(dicks, uow)
+                text = await self._spontaneous_battle(dicks, uow, now)
                 if text is None:
                     continue
                 return _spoken(text)
             if kind is RandomEventKind.HURRICANE:
-                return _spoken(await self._hurricane(dicks, uow))
+                return _spoken(await self._hurricane(dicks, uow, now))
             if kind is RandomEventKind.GIFT:
-                return _spoken(await self._gift(dicks, uow))
+                return _spoken(await self._gift(dicks, uow, now))
             if kind is RandomEventKind.VIAGRA:
                 return _spoken(await self._viagra(dicks, uow, now))
             if kind is RandomEventKind.ICE_AGE:
                 return _spoken(await self._ice_age(dicks, uow))
             if kind is RandomEventKind.ROYAL_BATTLE:
-                text = await self._royal_battle(dicks, uow)
+                text = await self._royal_battle(dicks, uow, now)
                 if text is None:
                     continue
                 return _spoken(text)
@@ -158,14 +160,24 @@ class TriggerRandomEventsCycleUseCase:
 
     # ------------------------------------------------------------ immediate
 
-    async def _meteor(self, dicks: list[Dick], uow: UnitOfWork) -> str:
+    async def _meteor(self, dicks: list[Dick], uow: UnitOfWork, now: datetime) -> str:
         target = self._rng.choice(dicks)
         loss = self._rng.int_between(3, 10)
+        old_cm = target.size.cm
         target.size = target.size.apply(-loss)
         await uow.dicks.update(target)
+        await dick_history.record(
+            uow,
+            user_id=target.user_id,
+            chat_id=target.chat_id,
+            delta_cm=target.size.cm - old_cm,
+            new_size_cm=target.size.cm,
+            reason=DickHistoryReason.METEOR,
+            now=now,
+        )
         return texts.meteor(loss, target.size.cm)
 
-    async def _radiation(self, dicks: list[Dick], uow: UnitOfWork) -> str:
+    async def _radiation(self, dicks: list[Dick], uow: UnitOfWork, now: datetime) -> str:
         gained = lost = 0
         for d in dicks:
             delta = self._rng.int_between(-2, 5)
@@ -173,6 +185,15 @@ class TriggerRandomEventsCycleUseCase:
             applied = new.cm - d.size.cm
             d.size = new
             await uow.dicks.update(d)
+            await dick_history.record(
+                uow,
+                user_id=d.user_id,
+                chat_id=d.chat_id,
+                delta_cm=applied,
+                new_size_cm=d.size.cm,
+                reason=DickHistoryReason.RADIATION,
+                now=now,
+            )
             if applied > 0:
                 gained += 1
             elif applied < 0:
@@ -180,7 +201,7 @@ class TriggerRandomEventsCycleUseCase:
         return texts.radiation(gained, lost)
 
     async def _spontaneous_battle(
-        self, dicks: list[Dick], uow: UnitOfWork
+        self, dicks: list[Dick], uow: UnitOfWork, now: datetime
     ) -> str | None:
         stake = 5
         eligible = [d for d in dicks if d.size.cm >= stake]
@@ -200,6 +221,24 @@ class TriggerRandomEventsCycleUseCase:
         loser.size = loser.size.apply(-stake)
         await uow.dicks.update(winner)
         await uow.dicks.update(loser)
+        await dick_history.record(
+            uow,
+            user_id=winner.user_id,
+            chat_id=winner.chat_id,
+            delta_cm=stake,
+            new_size_cm=winner.size.cm,
+            reason=DickHistoryReason.SPONTANEOUS_BATTLE,
+            now=now,
+        )
+        await dick_history.record(
+            uow,
+            user_id=loser.user_id,
+            chat_id=loser.chat_id,
+            delta_cm=-stake,
+            new_size_cm=loser.size.cm,
+            reason=DickHistoryReason.SPONTANEOUS_BATTLE,
+            now=now,
+        )
 
         winner_ref = await _label_by_user_id(uow, winner.user_id)
         loser_ref = await _label_by_user_id(uow, loser.user_id)
@@ -207,26 +246,46 @@ class TriggerRandomEventsCycleUseCase:
             winner_ref, loser_ref, stake, winner.size.cm, loser.size.cm
         )
 
-    async def _hurricane(self, dicks: list[Dick], uow: UnitOfWork) -> str:
+    async def _hurricane(self, dicks: list[Dick], uow: UnitOfWork, now: datetime) -> str:
         n_hit = max(1, len(dicks) // 2)
         victims = self._rng.sample(dicks, min(n_hit, len(dicks)))
         total_loss = 0
         for d in victims:
             loss = self._rng.int_between(1, 3)
+            old_cm = d.size.cm
             d.size = d.size.apply(-loss)
             total_loss += loss
             await uow.dicks.update(d)
+            await dick_history.record(
+                uow,
+                user_id=d.user_id,
+                chat_id=d.chat_id,
+                delta_cm=d.size.cm - old_cm,
+                new_size_cm=d.size.cm,
+                reason=DickHistoryReason.HURRICANE,
+                now=now,
+            )
         return texts.hurricane(len(victims), total_loss)
 
-    async def _gift(self, dicks: list[Dick], uow: UnitOfWork) -> str:
+    async def _gift(self, dicks: list[Dick], uow: UnitOfWork, now: datetime) -> str:
         target = self._rng.choice(dicks)
         bonus = self._rng.int_between(5, 15)
+        old_cm = target.size.cm
         target.size = target.size.apply(bonus)
         await uow.dicks.update(target)
+        await dick_history.record(
+            uow,
+            user_id=target.user_id,
+            chat_id=target.chat_id,
+            delta_cm=target.size.cm - old_cm,
+            new_size_cm=target.size.cm,
+            reason=DickHistoryReason.RANDOM_GIFT,
+            now=now,
+        )
         ref = await _label_by_user_id(uow, target.user_id)
         return texts.gift(ref, bonus, target.size.cm)
 
-    async def _viagra(self, dicks: list[Dick], uow: UnitOfWork, now) -> str:
+    async def _viagra(self, dicks: list[Dick], uow: UnitOfWork, now: datetime) -> str:
         cfg = self._semen_config
         for d in dicks:
             cap = cfg.cap_for(d.size.cm)
@@ -251,7 +310,7 @@ class TriggerRandomEventsCycleUseCase:
         return texts.ice_age(reset)
 
     async def _royal_battle(
-        self, dicks: list[Dick], uow: UnitOfWork
+        self, dicks: list[Dick], uow: UnitOfWork, now: datetime
     ) -> str | None:
         eligible = [d for d in dicks if d.size.cm >= 5]
         if len(eligible) < 4:
@@ -263,12 +322,22 @@ class TriggerRandomEventsCycleUseCase:
         semi2_winner, semi2_loser = self._duel(c, d)
         champion, finalist = self._duel(semi1_winner, semi2_winner)
 
-        champion.size = champion.size.apply(9)
-        finalist.size = finalist.size.apply(3)
-        semi1_loser.size = semi1_loser.size.apply(-3)
-        semi2_loser.size = semi2_loser.size.apply(-3)
+        nominal_deltas = {
+            id(champion): 9, id(finalist): 3, id(semi1_loser): -3, id(semi2_loser): -3,
+        }
         for p in (champion, finalist, semi1_loser, semi2_loser):
+            old_cm = p.size.cm
+            p.size = p.size.apply(nominal_deltas[id(p)])
             await uow.dicks.update(p)
+            await dick_history.record(
+                uow,
+                user_id=p.user_id,
+                chat_id=p.chat_id,
+                delta_cm=p.size.cm - old_cm,
+                new_size_cm=p.size.cm,
+                reason=DickHistoryReason.ROYAL_BATTLE,
+                now=now,
+            )
 
         champ_ref = await _label_by_user_id(uow, champion.user_id)
         fin_ref = await _label_by_user_id(uow, finalist.user_id)
@@ -289,7 +358,7 @@ class TriggerRandomEventsCycleUseCase:
     # -------------------------------------------------------------- pending
 
     async def _create_orgy(
-        self, chat_id: TelegramChatId, uow: UnitOfWork, now
+        self, chat_id: TelegramChatId, uow: UnitOfWork, now: datetime
     ) -> bool:
         resolves_at = now + timedelta(minutes=ORGY_TIMER_MINUTES)
         pending = PendingEvent.new(
@@ -315,7 +384,7 @@ class TriggerRandomEventsCycleUseCase:
         return True
 
     async def _create_bot_battle(
-        self, chat_id: TelegramChatId, uow: UnitOfWork, now
+        self, chat_id: TelegramChatId, uow: UnitOfWork, now: datetime
     ) -> bool:
         bots = await self._telegram.list_bot_admins(chat_id)
         if not bots:

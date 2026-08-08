@@ -5,9 +5,12 @@ from typing import Protocol, Self
 
 from src.application.ports.repositories import (
     BattleRepository,
+    DickHistoryRepository,
     DickRepository,
     GroupRepository,
     PendingEventRepository,
+    PipaCoinTransactionRepository,
+    PipaCoinWalletRepository,
     SemenBalanceRepository,
     UserPreferencesRepository,
     UserRepository,
@@ -17,11 +20,14 @@ from src.application.ports.repositories import (
 class UnitOfWork(Protocol):
     users: UserRepository
     dicks: DickRepository
+    dick_history: DickHistoryRepository
     groups: GroupRepository
     user_preferences: UserPreferencesRepository
     battles: BattleRepository
     semen: SemenBalanceRepository
     pending_events: PendingEventRepository
+    pipacoin_wallets: PipaCoinWalletRepository
+    pipacoin_transactions: PipaCoinTransactionRepository
 
     async def __aenter__(self) -> Self: ...
 

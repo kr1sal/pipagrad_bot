@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from src.infrastructure.persistence.repositories.battle_repository import (
     SqlAlchemyBattleRepository,
 )
+from src.infrastructure.persistence.repositories.dick_history_repository import (
+    SqlAlchemyDickHistoryRepository,
+)
 from src.infrastructure.persistence.repositories.dick_repository import (
     SqlAlchemyDickRepository,
 )
@@ -16,6 +19,12 @@ from src.infrastructure.persistence.repositories.group_repository import (
 )
 from src.infrastructure.persistence.repositories.pending_event_repository import (
     SqlAlchemyPendingEventRepository,
+)
+from src.infrastructure.persistence.repositories.pipacoin_transaction_repository import (
+    SqlAlchemyPipaCoinTransactionRepository,
+)
+from src.infrastructure.persistence.repositories.pipacoin_wallet_repository import (
+    SqlAlchemyPipaCoinWalletRepository,
 )
 from src.infrastructure.persistence.repositories.semen_balance_repository import (
     SqlAlchemySemenBalanceRepository,
@@ -31,11 +40,14 @@ from src.infrastructure.persistence.repositories.user_repository import (
 class SqlAlchemyUnitOfWork:
     users: SqlAlchemyUserRepository
     dicks: SqlAlchemyDickRepository
+    dick_history: SqlAlchemyDickHistoryRepository
     groups: SqlAlchemyGroupRepository
     user_preferences: SqlAlchemyUserPreferencesRepository
     battles: SqlAlchemyBattleRepository
     semen: SqlAlchemySemenBalanceRepository
     pending_events: SqlAlchemyPendingEventRepository
+    pipacoin_wallets: SqlAlchemyPipaCoinWalletRepository
+    pipacoin_transactions: SqlAlchemyPipaCoinTransactionRepository
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
@@ -45,11 +57,16 @@ class SqlAlchemyUnitOfWork:
         self._session = self._session_factory()
         self.users = SqlAlchemyUserRepository(self._session)
         self.dicks = SqlAlchemyDickRepository(self._session)
+        self.dick_history = SqlAlchemyDickHistoryRepository(self._session)
         self.groups = SqlAlchemyGroupRepository(self._session)
         self.user_preferences = SqlAlchemyUserPreferencesRepository(self._session)
         self.battles = SqlAlchemyBattleRepository(self._session)
         self.semen = SqlAlchemySemenBalanceRepository(self._session)
         self.pending_events = SqlAlchemyPendingEventRepository(self._session)
+        self.pipacoin_wallets = SqlAlchemyPipaCoinWalletRepository(self._session)
+        self.pipacoin_transactions = SqlAlchemyPipaCoinTransactionRepository(
+            self._session
+        )
         return self
 
     async def __aexit__(

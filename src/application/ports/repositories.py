@@ -5,8 +5,11 @@ from typing import Protocol
 
 from src.domain.entities.battle import Battle
 from src.domain.entities.dick import Dick
+from src.domain.entities.dick_history_entry import DickHistoryEntry
 from src.domain.entities.group import Group, GroupSettings
 from src.domain.entities.pending_event import PendingEvent
+from src.domain.entities.pipacoin_transaction import PipaCoinTransaction
+from src.domain.entities.pipacoin_wallet import PipaCoinWallet
 from src.domain.entities.semen_balance import SemenBalance
 from src.domain.entities.user import User
 from src.domain.value_objects.telegram_ids import TelegramChatId, TelegramUserId
@@ -43,6 +46,16 @@ class DickRepository(Protocol):
     async def list_top_for_chat(
         self, chat_id: TelegramChatId, limit: int
     ) -> list[Dick]: ...
+
+
+class DickHistoryRepository(Protocol):
+    async def add(self, entry: DickHistoryEntry) -> DickHistoryEntry: ...
+
+    async def list_page(
+        self, user_id: int, chat_id: TelegramChatId, *, limit: int, offset: int
+    ) -> list[DickHistoryEntry]:
+        """Newest-first page. Fetch `limit + 1` upstream to detect a next page."""
+        ...
 
 
 class GroupRepository(Protocol):
@@ -119,4 +132,24 @@ class SemenBalanceRepository(Protocol):
 
     async def upsert(self, balance: SemenBalance) -> SemenBalance:
         """Insert or update; returns the entity with `id` populated on insert."""
+        ...
+
+
+class PipaCoinWalletRepository(Protocol):
+    async def get(self, user_id: int) -> PipaCoinWallet | None: ...
+
+    async def add(self, wallet: PipaCoinWallet) -> PipaCoinWallet:
+        """Persist a new wallet and return it with the assigned id."""
+        ...
+
+    async def update(self, wallet: PipaCoinWallet) -> None: ...
+
+
+class PipaCoinTransactionRepository(Protocol):
+    async def add(self, tx: PipaCoinTransaction) -> PipaCoinTransaction: ...
+
+    async def list_page(
+        self, user_id: int, *, limit: int, offset: int
+    ) -> list[PipaCoinTransaction]:
+        """Newest-first page. Fetch `limit + 1` upstream to detect a next page."""
         ...
