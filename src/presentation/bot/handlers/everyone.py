@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import re
 
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.enums import ChatType
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
@@ -17,13 +18,17 @@ router = Router(name="everyone")
 
 _GROUP_TYPES = {ChatType.GROUP, ChatType.SUPERGROUP}
 
+# Plain-text "@everyone" mention — Telegram never turns this into a real
+# mention entity since there's no such user, so it just arrives as text.
+# Matched anywhere in the message, not only at the start, since people
+# tend to tack it onto a sentence rather than lead with it.
+_EVERYONE_TOKEN_RE = re.compile(r"(?<!\w)@everyone(?!\w)", re.IGNORECASE)
 
-@router.message(Command("everyone", "all"))
-@inject
-async def handle_everyone(
+
+async def _call_everyone(
     message: Message,
-    command: CommandObject,
-    mention_everyone: FromDishka[MentionEveryoneUseCase],
+    note: str | None,
+    mention_everyone: MentionEveryoneUseCase,
 ) -> None:
     if message.from_user is None:
         return
@@ -44,7 +49,28 @@ async def handle_everyone(
         await message.reply(texts.everyone_empty())
         return
 
-    note = command.args.strip() if command.args else None
     for chunk in texts.everyone_chunks(users, note):
         await message.answer(chunk)
         await asyncio.sleep(0.05)  # stay clear of Telegram's per-chat flood limit
+
+
+@router.message(Command("everyone", "all"))
+@inject
+async def handle_everyone(
+    message: Message,
+    command: CommandObject,
+    mention_everyone: FromDishka[MentionEveryoneUseCase],
+) -> None:
+    note = command.args.strip() if command.args else None
+    await _call_everyone(message, note, mention_everyone)
+
+
+@router.message(F.text.regexp(_EVERYONE_TOKEN_RE))
+@inject
+async def handle_everyone_text(
+    message: Message,
+    mention_everyone: FromDishka[MentionEveryoneUseCase],
+) -> None:
+    assert message.text is not None
+    note = _EVERYONE_TOKEN_RE.sub("", message.text).strip() or None
+    await _call_everyone(message, note, mention_everyone)
