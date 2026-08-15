@@ -65,7 +65,7 @@ async def handle_everyone(
     await _call_everyone(message, note, mention_everyone)
 
 
-@router.message(F.text.regexp(_EVERYONE_TOKEN_RE))
+@router.message(F.text.regexp(_EVERYONE_TOKEN_RE, mode="search"))
 @inject
 async def handle_everyone_text(
     message: Message,
