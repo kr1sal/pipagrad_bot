@@ -40,6 +40,7 @@ from src.application.use_cases.join_pending import (
     JoinOrgyUseCase,
     JoinTeamBattleUseCase,
 )
+from src.application.use_cases.mention_everyone import MentionEveryoneUseCase
 from src.application.use_cases.perform_interaction import PerformInteractionUseCase
 from src.application.use_cases.resolve_pending_events import (
     ResolvePendingEventsUseCase,
@@ -264,6 +265,12 @@ class RequestProvider(Provider):
     @provide
     def get_pipacoin_history(self, uow: UnitOfWork) -> GetPipaCoinHistoryUseCase:
         return GetPipaCoinHistoryUseCase(uow)
+
+    @provide
+    def mention_everyone(
+        self, uow: UnitOfWork, telegram: TelegramGateway
+    ) -> MentionEveryoneUseCase:
+        return MentionEveryoneUseCase(uow, telegram)
 
 
 def build_container(settings: Settings, bot: Bot):

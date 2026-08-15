@@ -6,12 +6,15 @@ from html import escape
 from src.application.dto.dick_history import DickHistoryLine, DickHistoryPage
 from src.application.dto.pipacoin import PipaCoinHistoryLine, PipaCoinHistoryPage
 from src.application.dto.stats import MyChatBalance, TopEntry
+from src.domain.entities.user import User
 from src.domain.services.interaction_policy import Denial
 from src.domain.value_objects.dick_history_reason import DickHistoryReason
 from src.domain.value_objects.interaction_type import InteractionType
 from src.domain.value_objects.pipacoin_transaction_kind import (
     PipaCoinTransactionKind,
 )
+
+_MENTION_CHUNK_LIMIT = 3800  # stay well under Telegram's 4096-char message cap
 
 _PIPACOIN_KIND_LABEL: dict[PipaCoinTransactionKind, str] = {
     PipaCoinTransactionKind.EXCHANGE: "🪙 обмен см",
@@ -291,6 +294,43 @@ def top_header(is_global: bool) -> str:
 def top_line(rank: int, mention: str, size_cm: int) -> str:
     medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f" {rank}.")
     return f"{medal} {mention} — <b>{size_cm} см</b>"
+
+
+def everyone_only_in_groups() -> str:
+    return "Эта команда работает только в группе."
+
+
+def everyone_not_admin() -> str:
+    return "🚫 Позвать всех может только админ группы."
+
+
+def everyone_empty() -> str:
+    return "Пока никого не знаю в этом чате — тут ещё не растили писюнчик."
+
+
+def everyone_chunks(users: list[User], note: str | None) -> list[str]:
+    """
+    Splits mentions across as many messages as needed to stay under
+    Telegram's 4096-char limit — big groups can easily overflow one message.
+    """
+    header = (
+        "📣 <b>Общий сбор!</b>"
+        if note is None
+        else f"📣 <b>Общий сбор:</b> {escape(note)}"
+    )
+    mentions = [mention(u.username, int(u.tg_id)) for u in users]
+
+    chunks: list[str] = []
+    current = header
+    for m in mentions:
+        candidate = f"{current} {m}"
+        if len(candidate) > _MENTION_CHUNK_LIMIT:
+            chunks.append(current)
+            current = m
+        else:
+            current = candidate
+    chunks.append(current)
+    return chunks
 
 
 def inline_card_title() -> str:

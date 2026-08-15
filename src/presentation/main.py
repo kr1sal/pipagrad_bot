@@ -14,6 +14,7 @@ from src.presentation.bot.setup_commands import setup_bot_commands
 from src.presentation.bot.handlers.battle import router as battle_router
 from src.presentation.bot.handlers.chat_member import router as chat_member_router
 from src.presentation.bot.handlers.commands import router as commands_router
+from src.presentation.bot.handlers.everyone import router as everyone_router
 from src.presentation.bot.handlers.gift import router as gift_router
 from src.presentation.bot.handlers.history import router as history_router
 from src.presentation.bot.handlers.inline import router as inline_router
@@ -36,6 +37,7 @@ async def main() -> None:
 
     dp = Dispatcher()
     dp.include_router(commands_router)
+    dp.include_router(everyone_router)
     dp.include_router(settings_router)
     dp.include_router(me_router)
     dp.include_router(interactions_router)
